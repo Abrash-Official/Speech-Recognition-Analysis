@@ -1,0 +1,85 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Speech Recognition Report</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                max-width: 800px;
+                margin: 20px auto;
+                padding: 20px;
+                background-color: skyblue;
+            }
+            .report-container {
+                background: lightblue;
+                border-radius: 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                padding: 25px;
+            }
+            h1 {
+                color: #1a73e8;
+                border-bottom: 2px solid #1a73e8;
+                padding-bottom: 10px;
+            }
+            .section {
+                margin: 20px 0;
+                padding: 15px;
+                border-radius: 8px;
+            }
+            .reference { background-color: #e8f0fe; }
+            .result { background-color: #f6f9fe; }
+            .wer {
+                font-size: 1.2em;
+                color: #ff6b6b;
+                font-weight: bold;
+                margin: 15px 0;
+            }
+            .errors div {
+                margin: 8px 0;
+                padding: 8px;
+                border-left: 4px solid;
+            }
+            .substitution { border-color: #ffa726; background-color: #fff3e0; }
+            .deletion { border-color: #ef5350; background-color: #ffebee; }
+            .insertion { border-color: #66bb6a; background-color: #e8f5e9; }
+            .timestamp { 
+                color: #666;
+                font-size: 0.9em;
+                text-align: right;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="report-container">
+            <h1>Speech Recognition Analysis</h1>
+            
+            <div class="section reference">
+                <h2>Reference Text</h2>
+                <p>kya bat hy yr kya bat hy</p>
+            </div>
+            
+            <div class="section result">
+                <h2>Recognized Text</h2>
+                <p>kya baat hai yaar kya</p>
+            </div>
+            
+            <div class="wer">
+                Word Error Rate: 71.43%
+            </div>
+            
+            <div class="errors">
+                <div class="substitution">🔁 bat → baat</div><div class="substitution">🔁 hy → hai</div><div class="substitution">🔁 yr → yaar</div>
+                <div class="deletion">❌ Deleted: bat</div><div class="deletion">❌ Deleted: hy</div>
+                
+            </div>
+            
+            <div class="timestamp">
+                Report generated: 2025-04-23 10:34:19
+            </div>
+        </div>
+    </body>
+    </html>
+    
