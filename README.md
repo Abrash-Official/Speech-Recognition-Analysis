@@ -693,7 +693,7 @@ https://leetcode.com/u/Nj5BdCiG0r/
 
 ### GitHub:
 
-https://github.com/Abrash-Official/Speech-Recognition-Analysis
+https://github.com/Abrash-Official
 
 ### Notion Notes:
 
