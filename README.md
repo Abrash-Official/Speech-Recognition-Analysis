@@ -647,7 +647,7 @@ if __name__ == "__main__":
 
 ## Output:
 
-![NLP Project Output.png](attachment:f95e3081-f213-4252-bb98-64ba1e6e2606:NLP_Project_Output.png)
+![NLP Project Output](https://github.com/user-attachments/assets/889dac66-e17d-437c-8a75-a7bc64fca739)
 
 ---
 
