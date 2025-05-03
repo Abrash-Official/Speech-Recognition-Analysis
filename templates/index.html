@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeechWER - Speech Analysis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-container">
+                <i class="fas fa-microphone-alt logo-icon"></i>
+                <h1>SpeechWER Analyzer</h1>
+            </div>
+            <p class="tagline">Measure Speech Recognition Accuracy</p>
+        </header>
+
+        <div class="control-panel">
+            <div class="mode-selector">
+                <div class="mode-options">
+                    <button class="mode-btn active" data-mode="microphone">
+                        <i class="fas fa-microphone"></i> Record Audio
+                    </button>
+                    <button class="mode-btn" data-mode="file_upload">
+                        <i class="fas fa-file-audio"></i> Upload File
+                    </button>
+                    <button class="mode-btn" data-mode="image_upload">
+                        <i class="fas fa-camera"></i> Upload Image
+                    </button>
+                    <button class="mode-btn" data-mode="manual_text">
+                        <i class="fas fa-keyboard"></i> Manual Input
+                    </button>
+                </div>
+            </div>
+
+            <div class="input-sections">
+                <div class="file-upload-section hidden">
+                    <div id="dragDropArea" class="drag-drop-area">
+                        <i class="fas fa-cloud-upload-alt drag-drop-icon"></i>
+                        <div class="drag-drop-text">Drag & drop your audio file here<br><span>or click to browse</span></div>
+                        <input type="file" id="audioFile" accept=".wav,.mp3" class="custom-file-input" style="display:none;">
+                        <div id="uploadDotLoader" class="dot-loader" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <div class="image-upload-section hidden">
+                    <div id="imageDragDropArea" class="drag-drop-area">
+                        <i class="fas fa-image drag-drop-icon"></i>
+                        <div class="drag-drop-text">Drag & drop your image here<br><span>or click to browse</span></div>
+                        <input type="file" id="imageFile" accept="image/*" class="custom-file-input" style="display:none;">
+                        <div id="imageUploadDotLoader" class="dot-loader" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <div class="recording-section hidden">
+                    <button id="recordButton" class="record-btn mic-only-btn" title="Click to Record">
+                        <i class="fas fa-microphone mic-big-icon"></i>
+                    </button>
+                    <div id="micDotLoader" class="dot-loader" style="display:none; margin-top:1rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-container">
+            <div class="text-box reference-box">
+                <h3><i class="fas fa-book-open"></i> Reference Text</h3>
+                <textarea id="referenceText" placeholder="Enter the correct transcript here..."></textarea>
+            </div>
+            
+            <div class="text-box result-box">
+                <h3><i class="fas fa-wave-square"></i> Recognized Text</h3>
+                <textarea id="manualText" readonly></textarea>
+            </div>
+        </div>
+
+        <button id="calculateBtn" class="analyze-btn">
+            <i class="fas fa-chart-bar"></i> Analyze Now
+        </button>
+
+        <div id="results" class="results-card hidden">
+            <div class="results-header">
+                <h2><i class="fas fa-poll-h"></i> Analysis Results</h2>
+                <div class="wer-score-box">
+                    <span class="wer-label">Word Error Rate:</span>
+                    <span class="wer-value">0.00%</span>
+                </div>
+            </div>
+
+            <div class="error-breakdown">
+                <div class="error-card substitution-card">
+                    <div class="error-header">
+                        <i class="fas fa-exchange-alt error-icon"></i>
+                        <h3>Substitutions</h3>
+                    </div>
+                    <ul class="error-list"></ul>
+                </div>
+                
+                <div class="error-card deletion-card">
+                    <div class="error-header">
+                        <i class="fas fa-trash-alt error-icon"></i>
+                        <h3>Deletions</h3>
+                    </div>
+                    <ul class="error-list"></ul>
+                </div>
+                
+                <div class="error-card insertion-card">
+                    <div class="error-header">
+                        <i class="fas fa-plus-circle error-icon"></i>
+                        <h3>Insertions</h3>
+                    </div>
+                    <ul class="error-list"></ul>
+                </div>
+            </div>
+            <!-- Text Difference Section -->
+            <div class="text-diff-section">
+                <h3 style="margin-top:2rem; color:#2a2a72;"><i class="fas fa-align-left"></i> Text Difference</h3>
+                <div id="textDifference" class="text-diff-box" style="margin-top:1rem;"></div>
+            </div>
+        </div>
+
+        <div id="error" class="error-toast hidden"></div>
+        <div class="analysis-btn-row" style="display:flex; gap:1rem; justify-content:flex-end; align-items:center; margin-top:2rem;">
+            <button id="detailedAnalysisBtn" class="analyze-btn" style="display:none;">
+                <i class="fas fa-chart-bar"></i> Detailed Analysis
+            </button>
+            <button id="againAnalysisBtn" class="analyze-btn-small" style="display:none;">
+                <i class="fas fa-redo"></i> Again Analysis
+            </button>
+            <button id="downloadReportBtn" class="analyze-btn-small" style="display:none;">
+                <i class="fas fa-file-download"></i> Download Report
+            </button>
+        </div>
+        <div id="detailedDotLoader" class="dot-loader" style="display:none; margin-top:2rem;"></div>
+        <div id="detailedAnalysisImages" style="display:none; margin-top:2rem; text-align:center;"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
