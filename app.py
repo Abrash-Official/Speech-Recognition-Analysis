@@ -19,6 +19,25 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pytesseract
 from PIL import Image
+# --- NLP imports ---
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+from nltk.corpus import stopwords
+import string
+# Ensure NLTK resources are downloaded
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet')
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
@@ -66,6 +85,9 @@ def transcribe():
         return jsonify({'hypothesis': hypothesis, 'reference': reference})
     
     except Exception as e:
+        import traceback
+        print("TRANSCRIBE ERROR:", e)
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/calculate_wer', methods=['POST'])
@@ -222,6 +244,7 @@ def detailed_analysis_images():
             empty_img = ''
             images = [empty_img] * 5
             cm_table = '<p>No data for confusion matrix.</p>'
+            print('RETURNING:', {'images': images, 'cm_table': cm_table})
             return jsonify({'images': images, 'cm_table': cm_table})
         # --- 1. Binary Confusion Matrix (Present/Absent) ---
         matcher = SequenceMatcher(None, reference, hypothesis)
@@ -411,10 +434,41 @@ def detailed_analysis_images():
             </tbody>
         </table>
         '''
+        print('RETURNING:', {'images': images, 'cm_table': cm_table})
         return jsonify({'images': images, 'cm_table': cm_table})
     except Exception as e:
         print(f"Error in detailed_analysis_images: {str(e)}")  # Server-side logging
         return jsonify({'images': ['']*5, 'cm_table': '<p>Error generating analysis.</p>', 'error': str(e)}), 500
+
+@app.route('/nlp_analysis', methods=['POST'])
+def nlp_analysis():
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        # Tokenization
+        tokens = word_tokenize(text)
+        # Normalization: lowercase, remove punctuation
+        table = str.maketrans('', '', string.punctuation)
+        normalized = [w.lower().translate(table) for w in tokens if w.strip()]
+        normalized = [w for w in normalized if w]
+        # Stemming
+        stemmer = PorterStemmer()
+        stemmed = [stemmer.stem(w) for w in normalized]
+        # Lemmatization
+        lemmatizer = WordNetLemmatizer()
+        lemmatized = [lemmatizer.lemmatize(w) for w in normalized]
+        # Stopwords
+        stop_words = set(stopwords.words('english'))
+        no_stopwords = [w for w in normalized if w not in stop_words]
+        return jsonify({
+            'tokenization': tokens,
+            'normalization': normalized,
+            'stemming': stemmed,
+            'lemmatization': lemmatized,
+            'stopwords': no_stopwords
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/download_report', methods=['POST'])
 def download_report():
@@ -424,6 +478,7 @@ def download_report():
         hypothesis = data.get('hypothesis', '')
         images = data.get('images', [])  # List of base64 images
         cm_table = data.get('cm_table', '')
+        nlp = data.get('nlp', None)
 
         pdf = FPDF()
         pdf.add_page()
@@ -455,6 +510,61 @@ def download_report():
         import re
         table_text = re.sub('<[^<]+?>', '', cm_table)
         pdf.multi_cell(0, 6, table_text)
+        # --- NLP Section ---
+        if nlp:
+            try:
+                import matplotlib.pyplot as plt
+                import matplotlib.patches as patches
+                # Prepare NLP data as a list of (label, desc, items)
+                nlp_blocks = [
+                    ("Tokenization", "Splitting text into individual words or tokens.", nlp.get('tokenization', [])),
+                    ("Normalization", "Converting all words to lowercase and removing punctuation.", nlp.get('normalization', [])),
+                    ("Stemming", "Reducing words to their root form (e.g., 'running' → 'run').", nlp.get('stemming', [])),
+                    ("Lemmatization", "Reducing words to their dictionary base form (e.g., 'better' → 'good').", nlp.get('lemmatization', [])),
+                    ("Stop Words Removed", "Removing common words that add little meaning (e.g., 'the', 'is').", nlp.get('stopwords', [])),
+                ]
+                fig, ax = plt.subplots(figsize=(8.5, 5))
+                ax.axis('off')
+                y = 1.0
+                for label, desc, items in nlp_blocks:
+                    ax.text(0.01, y, label, fontsize=14, fontweight='bold', color='#2a2a72', va='top')
+                    y -= 0.06
+                    ax.text(0.02, y, desc, fontsize=10, color='#009ffd', va='top', style='italic')
+                    y -= 0.05
+                    # Show up to 10 tokens per line
+                    tokens = [str(w) for w in items]
+                    for i in range(0, len(tokens), 10):
+                        ax.text(0.03, y, ' '.join(tokens[i:i+10]), fontsize=11, color='#222', va='top')
+                        y -= 0.045
+                    y -= 0.02
+                plt.tight_layout()
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as nlp_img:
+                    fig.savefig(nlp_img.name, bbox_inches='tight', dpi=180)
+                    plt.close(fig)
+                    pdf.add_page()
+                    pdf.set_font('Arial', 'B', 13)
+                    pdf.cell(0, 10, 'NLP Analysis:', ln=True)
+                    pdf.image(nlp_img.name, w=180)
+                os.unlink(nlp_img.name)
+            except Exception as e:
+                # Fallback to text if image fails
+                pdf.ln(4)
+                pdf.set_font('Arial', 'B', 13)
+                pdf.cell(0, 10, 'NLP Analysis:', ln=True)
+                pdf.set_font('Arial', '', 11)
+                def nlp_list(label, desc, items):
+                    pdf.set_font('Arial', 'B', 11)
+                    pdf.cell(0, 8, label, ln=True)
+                    pdf.set_font('Arial', 'I', 10)
+                    pdf.cell(0, 7, desc, ln=True)
+                    pdf.set_font('Arial', '', 10)
+                    pdf.multi_cell(0, 6, ' '.join(items) if items else '-')
+                    pdf.ln(1)
+                nlp_list('Tokenization', 'Splitting text into individual words or tokens.', nlp.get('tokenization', []))
+                nlp_list('Normalization', 'Converting all words to lowercase and removing punctuation.', nlp.get('normalization', []))
+                nlp_list('Stemming', 'Reducing words to their root form (e.g., "running" → "run").', nlp.get('stemming', []))
+                nlp_list('Lemmatization', 'Reducing words to their dictionary base form (e.g., "better" → "good").', nlp.get('lemmatization', []))
+                nlp_list('Stop Words Removed', 'Removing common words that add little meaning (e.g., "the", "is").', nlp.get('stopwords', []))
         # Save PDF to temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_pdf:
             pdf.output(tmp_pdf.name)
@@ -462,6 +572,9 @@ def download_report():
             tmp_pdf_path = tmp_pdf.name
         return send_file(tmp_pdf_path, as_attachment=True, download_name='SpeechWER_Report.pdf')
     except Exception as e:
+        import traceback
+        print("DOWNLOAD REPORT ERROR:", e)
+        traceback.print_exc()  # Print the full error to the terminal
         return {'error': str(e)}, 500
 
 @app.route('/merge_texts', methods=['POST'])

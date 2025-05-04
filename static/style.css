@@ -357,19 +357,41 @@ textarea:focus {
     transform: scale(1.12) rotate(-6deg);
 }
 
-.substitution-card .error-icon {
+.substitution-card, .deletion-card, .insertion-card {
     background: #fff3cd;
-    color: #ffc107;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px #009ffd11;
+    padding: 1.2rem 1.5rem 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: none;
+    border-left: 6px solid;
+    transition: box-shadow 0.3s, border 0.3s;
 }
-
-.deletion-card .error-icon {
-    background: #f8d7da;
-    color: #dc3545;
+.substitution-card {
+    border-left: 6px solid #ffe08a;
 }
-
-.insertion-card .error-icon {
-    background: #d4edda;
-    color: #28a745;
+.deletion-card {
+    border-left: 6px solid #f14668;
+    background: #ffeaea;
+}
+.insertion-card {
+    border-left: 6px solid #48c774;
+    background: #e6f9ed;
+}
+.substitution-card:hover .error-icon {
+    box-shadow: 0 0 16px 4px #ffe08a99;
+    background: #ffe08a;
+    color: #fff;
+}
+.deletion-card:hover .error-icon {
+    box-shadow: 0 0 16px 4px #f1466899;
+    background: #f14668;
+    color: #fff;
+}
+.insertion-card:hover .error-icon {
+    box-shadow: 0 0 16px 4px #48c77499;
+    background: #48c774;
+    color: #fff;
 }
 
 .error-list {
@@ -403,18 +425,6 @@ textarea:focus {
     background: #b3e0ff;
     box-shadow: 0 0 8px 2px #009ffd44;
     transform: scale(1.04);
-}
-
-.substitution-card {
-    border: 2px solid #ffe08a;
-}
-
-.deletion-card {
-    border: 2px solid #f14668;
-}
-
-.insertion-card {
-    border: 2px solid #48c774;
 }
 
 .error-toast {
@@ -498,6 +508,104 @@ textarea:focus {
 .analysis-section:not(.hidden) {
     opacity: 1;
     transform: translateY(0);
+}
+
+.analysis-btn-row {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 2rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+}
+#mlAnalysisBtn, #nlpAnalysisBtn {
+    min-width: 180px;
+    flex: 1 1 180px;
+    padding: 1.5rem;
+    background: white;
+    color: var(--primary);
+    border: 2px solid transparent;
+    border-radius: 1rem;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: box-shadow 0.3s, transform 0.3s, background 0.3s, border 0.3s, color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 24px #009ffd33, 0 2px 8px #2a2a7211;
+    z-index: 1;
+}
+#mlAnalysisBtn.active, #nlpAnalysisBtn.active {
+    background: var(--secondary);
+    color: white;
+    border: 2px solid #009ffd;
+    box-shadow: 0 0 16px 2px #009ffd88, 0 0 32px 4px #2a2a7288;
+    transform: translateY(-4px) scale(1.04);
+    z-index: 2;
+}
+#mlAnalysisBtn:hover:not(.active), #nlpAnalysisBtn:hover:not(.active) {
+    border: 2px solid #009ffd;
+    box-shadow: 0 0 12px 2px #009ffd55;
+    color: var(--primary);
+    background: white;
+    z-index: 1;
+}
+#mlAnalysisBtn:focus, #nlpAnalysisBtn:focus {
+    outline: none;
+    box-shadow: var(--glow-blue);
+}
+
+/* NLP Result Cards */
+.nlp-card {
+    background: #f8fbff;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px #009ffd11;
+    padding: 1.2rem 1.5rem 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border-left: 6px solid #009ffd;
+    transition: box-shadow 0.3s, border 0.3s;
+}
+.nlp-card:hover {
+    box-shadow: 0 0 32px 8px #7fd8ff88, 0 0 16px #009ffd55;
+    transform: scale(1.03) translateY(-4px);
+    z-index: 2;
+    border-left: 6px solid #009ffd;
+}
+.nlp-label {
+    font-weight: bold;
+    color: #2a2a72;
+    font-size: 1.15rem;
+    margin-bottom: 0.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.nlp-desc {
+    color: #009ffd;
+    font-size: 0.98rem;
+    margin-bottom: 0.7rem;
+    font-style: italic;
+}
+.nlp-value {
+    margin-top: 0.2rem;
+    font-size: 1.08rem;
+    word-break: break-word;
+}
+.nlp-token {
+    display: inline-block;
+    background: #e0f3ff;
+    color: #2a2a72;
+    border-radius: 0.5em;
+    padding: 0.18em 0.7em;
+    margin: 0 0.15em 0.15em 0;
+    font-weight: 500;
+    font-size: 1em;
+    transition: background 0.2s, color 0.2s;
 }
 
 #detailedAnalysisBtn {
@@ -1012,26 +1120,6 @@ textarea:focus {
     100% { transform: translateY(0); opacity: 0.7; }
 }
 
-.analysis-btn-row {
-    display: flex;
-    gap: 1.2rem;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: 2rem;
-    margin-bottom: 1.2rem;
-    flex-wrap: wrap;
-}
-@media (max-width: 700px) {
-    .analysis-btn-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.7rem;
-    }
-    .analysis-btn-row .analyze-btn {
-        width: 100%;
-    }
-}
-
 .analyze-btn-small {
     display: inline-flex;
     align-items: center;
@@ -1205,4 +1293,55 @@ textarea:focus {
     min-width: 80px;
     white-space: nowrap;
     word-break: normal;
+}
+
+/* NLP Card Animation */
+.nlp-card.nlp-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s, transform 0.7s;
+}
+.nlp-card.nlp-animate[style*='opacity: 1'] {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* NLP Token Animation */
+.nlp-token.nlp-token-animate {
+    transition: background 0.3s, color 0.3s, box-shadow 0.3s, transform 0.2s;
+    cursor: pointer;
+    box-shadow: 0 1px 4px #009ffd22;
+}
+.nlp-token.nlp-token-animate:hover {
+    background: linear-gradient(90deg, #e0f3ff 0%, #009ffd 100%);
+    color: #fff;
+    box-shadow: 0 0 16px 2px #009ffd88, 0 0 8px #2a2a7288;
+    transform: scale(1.13) rotate(-2deg);
+    z-index: 2;
+}
+
+#againNLPBtn.loading {
+    background: #009ffd !important;
+    color: #fff !important;
+    border: 2px solid #009ffd !important;
+    justify-content: center;
+    align-items: center;
+}
+#againNLPBtn.loading .dot-loader-dot {
+    background: #fff !important;
+}
+
+.custom-diff-box {
+    background: #e0f3ff;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px #009ffd22;
+    padding: 1.2rem 1.5rem 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: none;
+    border-left: 6px solid #009ffd;
+    transition: box-shadow 0.3s, border 0.3s;
+    font-size: 1.08rem;
+    min-height: 48px;
+    word-break: break-word;
+    line-height: 1.7;
 }

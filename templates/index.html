@@ -124,18 +124,35 @@
 
         <div id="error" class="error-toast hidden"></div>
         <div class="analysis-btn-row" style="display:flex; gap:1rem; justify-content:flex-end; align-items:center; margin-top:2rem;">
-            <button id="detailedAnalysisBtn" class="analyze-btn" style="display:none;">
-                <i class="fas fa-chart-bar"></i> Detailed Analysis
+            <button id="mlAnalysisBtn" class="analyze-btn" style="display:none;">
+                <i class="fas fa-chart-bar"></i> ML Analysis
             </button>
-            <button id="againAnalysisBtn" class="analyze-btn-small" style="display:none;">
+            <button id="nlpAnalysisBtn" class="analyze-btn" style="display:none;">
+                <i class="fas fa-brain"></i> NLP Analysis
+            </button>
+        </div>
+        <!-- ML/NLP Again/Download buttons row -->
+        <div id="mlNlpActionRow" style="display:flex; gap:1rem; justify-content:flex-end; align-items:center; margin-top:1rem;">
+            <button id="againMLBtn" class="analyze-btn-small" style="display:none;">
+                <i class="fas fa-redo"></i> Again Analysis
+            </button>
+            <button id="againNLPBtn" class="analyze-btn-small" style="display:none;">
                 <i class="fas fa-redo"></i> Again Analysis
             </button>
             <button id="downloadReportBtn" class="analyze-btn-small" style="display:none;">
                 <i class="fas fa-file-download"></i> Download Report
             </button>
+            <button id="downloadNLPBtn" class="analyze-btn-small" style="display:none;">
+                <i class="fas fa-file-download"></i> Download Report
+            </button>
         </div>
-        <div id="detailedDotLoader" class="dot-loader" style="display:none; margin-top:2rem;"></div>
+        <div id="mlDotLoader" class="dot-loader" style="display:none; margin-top:2rem;"></div>
         <div id="detailedAnalysisImages" style="display:none; margin-top:2rem; text-align:center;"></div>
+        <div id="nlpDotLoader" class="dot-loader" style="display:none; margin-top:2rem;"></div>
+        <div id="nlpAnalysisSection" class="results-card hidden" style="margin-top:2rem;">
+            <h2><i class="fas fa-brain"></i> NLP Analysis</h2>
+            <div id="nlpResults"></div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
