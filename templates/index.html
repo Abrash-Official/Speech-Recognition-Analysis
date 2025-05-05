@@ -28,9 +28,6 @@
                     <button class="mode-btn" data-mode="file_upload">
                         <i class="fas fa-file-audio"></i> Upload File
                     </button>
-                    <button class="mode-btn" data-mode="image_upload">
-                        <i class="fas fa-camera"></i> Upload Image
-                    </button>
                     <button class="mode-btn" data-mode="manual_text">
                         <i class="fas fa-keyboard"></i> Manual Input
                     </button>
@@ -38,24 +35,18 @@
             </div>
 
             <div class="input-sections">
-                <div class="file-upload-section hidden">
+                <div class="file-upload-section">
                     <div id="dragDropArea" class="drag-drop-area">
                         <i class="fas fa-cloud-upload-alt drag-drop-icon"></i>
-                        <div class="drag-drop-text">Drag & drop your audio file here<br><span>or click to browse</span></div>
-                        <input type="file" id="audioFile" accept=".wav,.mp3" class="custom-file-input" style="display:none;">
+                        <div class="drag-drop-text">
+                            Drag & drop your file here<br>
+                            <span>or click to browse</span><br>
+                            <span style="font-size:0.98em;color:#2a2a72;">You can upload audio, video, image, PDF, or text files (.wav, .mp3, .mp4, .m4a, .flac, .ogg, .aac, .webm, .txt, .pdf, .png, .jpg, .jpeg, .bmp, .tiff, .gif)</span>
+                        </div>
+                        <input type="file" id="audioFile" accept=".wav,.mp3,.mp4,.m4a,.flac,.ogg,.aac,.webm,.txt,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.gif" class="custom-file-input" style="display:none;">
                         <div id="uploadDotLoader" class="dot-loader" style="display:none;"></div>
                     </div>
                 </div>
-
-                <div class="image-upload-section hidden">
-                    <div id="imageDragDropArea" class="drag-drop-area">
-                        <i class="fas fa-image drag-drop-icon"></i>
-                        <div class="drag-drop-text">Drag & drop your image here<br><span>or click to browse</span></div>
-                        <input type="file" id="imageFile" accept="image/*" class="custom-file-input" style="display:none;">
-                        <div id="imageUploadDotLoader" class="dot-loader" style="display:none;"></div>
-                    </div>
-                </div>
-
                 <div class="recording-section hidden">
                     <button id="recordButton" class="record-btn mic-only-btn" title="Click to Record">
                         <i class="fas fa-microphone mic-big-icon"></i>

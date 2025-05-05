@@ -111,19 +111,19 @@ document.addEventListener('DOMContentLoaded', () => {
             dragDropArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
             if (file) {
-                await handleAudioFile(file);
+                await handleAnyFile(file);
             }
         });
         // File input change
         audioFileInput.addEventListener('change', async e => {
             const file = e.target.files[0];
             if (file) {
-                await handleAudioFile(file);
+                await handleAnyFile(file);
             }
         });
     }
 
-    async function handleAudioFile(file) {
+    async function handleAnyFile(file) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('mode', 'file_upload');
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleResponseWithProgress(JSON.parse(responseText), null);
             });
         } catch (err) {
-            showError('Error processing audio file');
+            showError('Error processing file');
         } finally {
             // Hide loader, restore drag-drop UI
             if (uploadDotLoader) uploadDotLoader.style.display = 'none';
@@ -546,91 +546,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
-        }
-    }
-
-    // Image upload handler
-    const imageDragDropArea = document.getElementById('imageDragDropArea');
-    const imageFileInput = document.getElementById('imageFile');
-    if (imageDragDropArea && imageFileInput) {
-        // Click opens file dialog
-        imageDragDropArea.addEventListener('click', () => imageFileInput.click());
-
-        // Drag over highlight
-        imageDragDropArea.addEventListener('dragover', e => {
-            e.preventDefault();
-            imageDragDropArea.classList.add('dragover');
-        });
-        imageDragDropArea.addEventListener('dragleave', e => {
-            e.preventDefault();
-            imageDragDropArea.classList.remove('dragover');
-        });
-        imageDragDropArea.addEventListener('drop', async e => {
-            e.preventDefault();
-            imageDragDropArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                await handleImageFile(file);
-            }
-        });
-        // File input change
-        imageFileInput.addEventListener('change', async e => {
-            const file = e.target.files[0];
-            if (file) {
-                await handleImageFile(file);
-            }
-        });
-    }
-
-    async function handleImageFile(file) {
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('mode', 'image_upload');
-        formData.append('reference', document.getElementById('referenceText').value);
-
-        // Show dot loader
-        const imageUploadDotLoader = document.getElementById('imageUploadDotLoader');
-        if (imageUploadDotLoader) {
-            imageUploadDotLoader.innerHTML = '<span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span>';
-            imageUploadDotLoader.style.display = 'flex';
-        }
-        // Hide drag-drop icon/text while loading
-        const dragDropIcon = document.querySelector('#imageDragDropArea .drag-drop-icon');
-        const dragDropText = document.querySelector('#imageDragDropArea .drag-drop-text');
-        if (dragDropIcon) dragDropIcon.style.display = 'none';
-        if (dragDropText) dragDropText.style.display = 'none';
-
-        try {
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/image_to_text', true);
-                xhr.onload = function () {
-                    if (xhr.status === 200) {
-                        resolve(xhr.responseText);
-                    } else {
-                        reject(new Error('Upload failed'));
-                    }
-                };
-                xhr.onerror = function () {
-                    reject(new Error('Upload error'));
-                };
-                xhr.send(formData);
-            }).then(responseText => {
-                const data = JSON.parse(responseText);
-                if (data.error) {
-                    showError(data.error);
-                } else {
-                    manualText.value = data.hypothesis;
-                    analyzeText(data.hypothesis, data.reference);
-                }
-            });
-        } catch (err) {
-            showError('Error processing image file');
-        } finally {
-            // Hide loader, restore drag-drop UI
-            if (imageUploadDotLoader) imageUploadDotLoader.style.display = 'none';
-            if (dragDropIcon) dragDropIcon.style.display = '';
-            if (dragDropText) dragDropText.style.display = '';
         }
     }
 

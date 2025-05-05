@@ -38,6 +38,7 @@ try:
     nltk.data.find('corpora/stopwords')
 except LookupError:
     nltk.download('stopwords')
+from PyPDF2 import PdfReader
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
@@ -65,25 +66,57 @@ def transcribe():
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'audio.webm')
             audio_file.save(temp_path)
             wav_path = convert_to_wav(temp_path)
+            filetype = 'audio'
         elif mode == 'file_upload':
             uploaded_file = request.files.get('file')
-            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file.filename)
+            filename = uploaded_file.filename.lower()
+            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             uploaded_file.save(temp_path)
-            wav_path = convert_to_wav(temp_path)
+            ext = os.path.splitext(filename)[1]
+            # Determine file type
+            if ext in ['.wav', '.mp3', '.mp4', '.m4a', '.flac', '.ogg', '.aac', '.webm']:
+                wav_path = convert_to_wav(temp_path)
+                filetype = 'audio'
+            elif ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif']:
+                filetype = 'image'
+            elif ext == '.pdf':
+                filetype = 'pdf'
+            elif ext == '.txt':
+                filetype = 'text'
+            else:
+                return jsonify({'error': 'Unsupported file type'}), 400
         else:
             return jsonify({'error': 'Invalid mode'}), 400
 
-        recognizer = sr.Recognizer()
-        with sr.AudioFile(wav_path) as source:
-            audio = recognizer.record(source)
-            hypothesis = recognizer.recognize_google(audio)
-        
-        # Cleanup temporary files
-        os.unlink(temp_path)
-        os.unlink(wav_path)
+        # Process file based on type
+        if mode == 'microphone' or (mode == 'file_upload' and filetype == 'audio'):
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio = recognizer.record(source)
+                hypothesis = recognizer.recognize_google(audio)
+            os.unlink(temp_path)
+            os.unlink(wav_path)
+        elif mode == 'file_upload' and filetype == 'image':
+            img = Image.open(temp_path)
+            hypothesis = pytesseract.image_to_string(img).strip()
+            os.unlink(temp_path)
+        elif mode == 'file_upload' and filetype == 'pdf':
+            with open(temp_path, 'rb') as f:
+                reader = PdfReader(f)
+                text = ''
+                for page in reader.pages:
+                    text += page.extract_text() or ''
+            hypothesis = text.strip()
+            os.unlink(temp_path)
+        elif mode == 'file_upload' and filetype == 'text':
+            with open(temp_path, 'r', encoding='utf-8', errors='ignore') as f:
+                text = f.read()
+            hypothesis = text.strip()
+            os.unlink(temp_path)
+        else:
+            return jsonify({'error': 'Unsupported or missing file type'}), 400
         
         return jsonify({'hypothesis': hypothesis, 'reference': reference})
-    
     except Exception as e:
         import traceback
         print("TRANSCRIBE ERROR:", e)
@@ -607,25 +640,6 @@ def merge_texts():
     merged_str = ' '.join(merged)
     print('MERGED:', merged_str)
     return jsonify({'merged': merged_str})
-
-@app.route('/image_to_text', methods=['POST'])
-def image_to_text():
-    try:
-        image_file = request.files.get('image')
-        reference = request.form.get('reference', '')
-        if not image_file:
-            return jsonify({'error': 'No image uploaded'}), 400
-        # Save image to temp file
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], image_file.filename)
-        image_file.save(temp_path)
-        # Open and OCR
-        img = Image.open(temp_path)
-        hypothesis = pytesseract.image_to_string(img)
-        # Cleanup
-        os.unlink(temp_path)
-        return jsonify({'hypothesis': hypothesis.strip(), 'reference': reference})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
