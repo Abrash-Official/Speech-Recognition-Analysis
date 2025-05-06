@@ -1331,6 +1331,65 @@ textarea:focus {
     background: #fff !important;
 }
 
+.cleaned-text-inline {
+    margin-top: 0.5rem;
+    background: #e0f3ff;
+    border-left: 4px solid #009ffd;
+    border-radius: 0.6rem;
+    padding: 0.7rem 1.1rem;
+    font-size: 1.05rem;
+    color: #2a2a72;
+    box-shadow: 0 1px 4px #009ffd11;
+    display: block;
+    word-break: break-word;
+    max-height: 120px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #009ffd #e0f3ff;
+}
+.cleaned-text-inline::-webkit-scrollbar {
+    width: 8px;
+    background: #e0f3ff;
+    border-radius: 8px;
+}
+.cleaned-text-inline::-webkit-scrollbar-thumb {
+    background: #009ffd;
+    border-radius: 8px;
+}
+
+.cleaned-label {
+    font-weight: 600;
+    color: #009ffd;
+    margin-right: 0.5em;
+}
+.cleaned-value {
+    color: #2a2a72;
+    font-weight: 500;
+}
+
+.cleaned-card {
+    border-left: 6px solid #009ffd;
+    background: #e0f3ff;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 2px 8px #009ffd22;
+    padding: 1.2rem 1.5rem 1.2rem 1.5rem;
+    border-radius: 1rem;
+    transition: box-shadow 0.3s, border 0.3s;
+}
+.deep-model .cleaned-card {
+    background: #e0f3ff;
+    border-left: 6px solid #2a2a72;
+    box-shadow: 0 0 24px 4px #7fd8ffcc, 0 0 8px #009ffd99 !important;
+}
+.cleaned-card .error-header {
+    margin-bottom: 0.7rem;
+}
+.cleaned-card .error-icon {
+    background: #009ffd;
+    color: #fff;
+    box-shadow: 0 0 8px 2px #009ffd33;
+}
+
 .custom-diff-box {
     background: #e0f3ff;
     border-radius: 1rem;
@@ -1344,4 +1403,83 @@ textarea:focus {
     min-height: 48px;
     word-break: break-word;
     line-height: 1.7;
+    max-height: 160px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #009ffd #e0f3ff;
+}
+.custom-diff-box::-webkit-scrollbar {
+    width: 8px;
+    background: #e0f3ff;
+    border-radius: 8px;
+}
+.custom-diff-box::-webkit-scrollbar-thumb {
+    background: #009ffd;
+    border-radius: 8px;
+}
+
+/* Modern Model Toggle Button Group - Enhanced */
+.model-toggle-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    background: #f8fbff;
+    border-radius: 2.5rem;
+    box-shadow: 0 2px 16px #009ffd22;
+    padding: 0.4rem 0.7rem;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+.model-toggle-btn {
+    padding: 0.7rem 2.2rem;
+    font-size: 1.08rem;
+    font-weight: 600;
+    border: 2.5px solid #009ffd;
+    background: #fff;
+    color: #2a2a72;
+    border-radius: 2rem;
+    cursor: pointer;
+    transition: background 0.25s, color 0.25s, border 0.25s, box-shadow 0.25s, transform 0.18s;
+    box-shadow: 0 2px 8px #009ffd11;
+    outline: none;
+    margin: 0 0.1rem;
+    letter-spacing: 0.5px;
+}
+.model-toggle-btn.active {
+    background: linear-gradient(90deg, #2a2a72 0%, #009ffd 100%);
+    color: #fff;
+    border: 2.5px solid #009ffd;
+    box-shadow: 0 0 16px 2px #009ffd66, 0 0 32px 4px #2a2a7266, 0 0 0 4px #e0f3ff;
+    transform: translateY(-2px) scale(1.07);
+    z-index: 2;
+}
+.model-toggle-btn:not(.active):hover {
+    background: #e0f3ff;
+    color: #009ffd;
+    border-color: #2a2a72;
+    box-shadow: 0 0 8px 2px #009ffd33;
+    transform: scale(1.03);
+}
+
+/* Deep Model: Add sky blue glow to main containers and buttons */
+.deep-model .container,
+.deep-model .text-box,
+.deep-model .results-card,
+.deep-model #nlpAnalysisSection {
+    box-shadow: 0 0 32px 8px #7fd8ffcc, 0 0 16px #009ffd99 !important;
+    transition: box-shadow 0.3s;
+}
+.deep-model .analyze-btn,
+.deep-model #detailedAnalysisBtn,
+.deep-model .analyze-btn-small,
+.deep-model #mlAnalysisBtn,
+.deep-model #nlpAnalysisBtn,
+.deep-model #downloadReportBtn,
+.deep-model #againMLBtn,
+.deep-model #againNLPBtn {
+    box-shadow: 0 0 24px 4px #7fd8ffcc, 0 0 8px #009ffd99 !important;
+    transition: box-shadow 0.3s;
 }

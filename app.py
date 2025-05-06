@@ -15,6 +15,7 @@ import base64
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 from fpdf import FPDF
+from PyPDF2 import PdfReader
 import plotly.express as px
 import plotly.graph_objects as go
 import pytesseract
@@ -25,24 +26,59 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from nltk.corpus import stopwords
 import string
+import re
+import whisper
+from flask_socketio import SocketIO, emit
+
 # Ensure NLTK resources are downloaded
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
-from PyPDF2 import PdfReader
+def download_nltk_resources():
+    required_resources = {
+        'tokenizers/punkt': 'punkt',
+        'corpora/wordnet': 'wordnet',
+        'corpora/stopwords': 'stopwords',
+        'taggers/averaged_perceptron_tagger': 'averaged_perceptron_tagger',
+        'tokenizers/punkt_tab': 'punkt_tab'
+    }
+    
+    for resource_path, package_name in required_resources.items():
+        try:
+            nltk.data.find(resource_path)
+        except LookupError:
+            print(f"Downloading NLTK resource: {package_name}")
+            nltk.download(package_name, quiet=True)
+
+# Download all required NLTK resources at startup
+download_nltk_resources()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # Allow uploads up to 200MB
+
+# Add contraction map for deep cleaning
+CONTRACTIONS = {
+    "can't": "can not", "won't": "will not", "n't": " not", "'re": " are", "'s": " is", "'d": " would", "'ll": " will", "'t": " not", "'ve": " have", "'m": " am"
+}
+
+def expand_contractions(text):
+    # Replace common contractions
+    text = re.sub(r"can't", "can not", text)
+    text = re.sub(r"won't", "will not", text)
+    text = re.sub(r"n't", " not", text)
+    text = re.sub(r"'re", " are", text)
+    text = re.sub(r"'s", " is", text)
+    text = re.sub(r"'d", " would", text)
+    text = re.sub(r"'ll", " will", text)
+    text = re.sub(r"'t", " not", text)
+    text = re.sub(r"'ve", " have", text)
+    text = re.sub(r"'m", " am", text)
+    return text
+
+def clean_text_for_deep(text):
+    text = expand_contractions(text)
+    text = text.lower()
+    text = re.sub(r'[.,!?"\'\-:;()\[\]{}]', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 def convert_to_wav(audio_path):
     """Convert any audio file to WAV format"""
@@ -50,6 +86,30 @@ def convert_to_wav(audio_path):
     wav_path = os.path.splitext(audio_path)[0] + ".wav"
     audio.export(wav_path, format="wav")
     return wav_path
+
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+@socketio.on('transcribe_audio')
+def handle_transcribe_audio(data):
+    import math
+    import os
+    audio_path = data['audio_path']
+    num_chunks = 20
+    audio = AudioSegment.from_file(audio_path)
+    chunk_length = len(audio) // num_chunks
+    model = whisper.load_model('base')
+    full_text = ""
+    for i in range(num_chunks):
+        start = i * chunk_length
+        end = (i + 1) * chunk_length if i < num_chunks - 1 else len(audio)
+        chunk = audio[start:end]
+        chunk_path = f"{audio_path}_chunk_{i}.wav"
+        chunk.export(chunk_path, format="wav")
+        result = model.transcribe(chunk_path)
+        full_text += result['text'] + " "
+        emit('transcribe_progress', {'progress': int((i+1)/num_chunks*100)}, broadcast=False)
+        os.remove(chunk_path)
+    emit('transcribe_complete', {'text': full_text.strip()})
 
 @app.route('/')
 def index():
@@ -90,10 +150,10 @@ def transcribe():
 
         # Process file based on type
         if mode == 'microphone' or (mode == 'file_upload' and filetype == 'audio'):
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(wav_path) as source:
-                audio = recognizer.record(source)
-                hypothesis = recognizer.recognize_google(audio)
+            # Use Whisper for transcription
+            model = whisper.load_model('base')  # You can use 'small', 'medium', 'large' for better accuracy
+            result = model.transcribe(wav_path)
+            hypothesis = result['text'].strip()
             os.unlink(temp_path)
             os.unlink(wav_path)
         elif mode == 'file_upload' and filetype == 'image':
@@ -127,14 +187,22 @@ def transcribe():
 def calculate_wer():
     data = request.get_json()
     try:
-        ref_words = data['reference'].lower().split()
-        hyp_words = data['hypothesis'].lower().split()
-        
+        model = data.get('model', 'normal')
+        reference = data['reference']
+        hypothesis = data['hypothesis']
+        # Always compute cleaned versions for display
+        cleaned_reference = clean_text_for_deep(reference)
+        cleaned_hypothesis = clean_text_for_deep(hypothesis)
+        if model == 'deep':
+            ref_words = cleaned_reference.split()
+            hyp_words = cleaned_hypothesis.split()
+        else:
+            ref_words = reference.lower().split()
+            hyp_words = hypothesis.lower().split()
         matcher = SequenceMatcher(None, ref_words, hyp_words)
         substitutions = []
         deletions = []
         insertions = []
-        
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             if tag == 'replace':
                 subs = list(zip(ref_words[i1:i2], hyp_words[j1:j2]))
@@ -143,17 +211,19 @@ def calculate_wer():
                 deletions.extend(ref_words[i1:i2])
             elif tag == 'insert':
                 insertions.extend(hyp_words[j1:j2])
-        
         total_errors = len(substitutions) + len(deletions) + len(insertions)
         wer = total_errors / len(ref_words) if ref_words else 1.0
-        
-        return jsonify({
+        response = {
             'wer': wer,
             'substitutions': substitutions,
             'deletions': deletions,
             'insertions': insertions,
-            'hypothesis': data['hypothesis']
-        })
+            'hypothesis': hypothesis,
+            'cleaned_reference': cleaned_reference,
+            'cleaned_hypothesis': cleaned_hypothesis
+        }
+        print("CLEANED DEBUG:", repr(cleaned_reference), "|", repr(cleaned_hypothesis))
+        return jsonify(response)
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -608,7 +678,7 @@ def download_report():
         import traceback
         print("DOWNLOAD REPORT ERROR:", e)
         traceback.print_exc()  # Print the full error to the terminal
-        return {'error': str(e)}, 500
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/merge_texts', methods=['POST'])
 def merge_texts():
@@ -642,4 +712,4 @@ def merge_texts():
     return jsonify({'merged': merged_str})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)

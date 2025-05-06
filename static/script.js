@@ -239,11 +239,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Text analysis
     async function analyzeText(hypothesis, reference) {
         try {
-            console.log('Analyzing text:', { hypothesis, reference }); // Debug log
+            console.log('Analyzing text:', { hypothesis, reference, model: currentModel }); // Debug log
             const response = await fetch('/calculate_wer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hypothesis, reference })
+                body: JSON.stringify({ hypothesis, reference, model: currentModel })
             });
             
             if (!response.ok) {
@@ -270,9 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const resultsDiv = document.getElementById('results');
             resultsDiv.classList.remove('hidden');
             document.querySelector('.wer-value').textContent = `${(data.wer * 100).toFixed(2)}%`;
-            console.log('Substitutions:', data.substitutions);
-            console.log('Deletions:', data.deletions);
-            console.log('Insertions:', data.insertions);
+            // Always use backend-provided error lists
             populateErrorList('substitution', data.substitutions);
             populateErrorList('deletion', data.deletions);
             populateErrorList('insertion', data.insertions);
@@ -282,47 +280,34 @@ document.addEventListener('DOMContentLoaded', () => {
             // Hide the images section until button is clicked again
             const imagesDiv = document.getElementById('detailedAnalysisImages');
             if (imagesDiv) imagesDiv.style.display = 'none';
-            // Render text difference using backend merge, always using current textarea values
+            // Show cleaned texts in deep model
+            const refInline = document.getElementById('cleanedReferenceInline');
+            const hypInline = document.getElementById('cleanedRecognitionInline');
+            if (currentModel === 'deep') {
+                refInline.innerHTML = data.cleaned_reference ? `<span class='cleaned-label'><i class='fas fa-broom'></i> Cleaned:</span> <span class='cleaned-value'>${data.cleaned_reference}</span>` : '';
+                hypInline.innerHTML = data.cleaned_hypothesis ? `<span class='cleaned-label'><i class='fas fa-broom'></i> Cleaned:</span> <span class='cleaned-value'>${data.cleaned_hypothesis}</span>` : '';
+                refInline.style.display = data.cleaned_reference ? 'block' : 'none';
+                hypInline.style.display = data.cleaned_hypothesis ? 'block' : 'none';
+                // Store for model switching
+                refInline.setAttribute('data-cleaned', data.cleaned_reference || '');
+                hypInline.setAttribute('data-cleaned', data.cleaned_hypothesis || '');
+            } else {
+                refInline.style.display = 'none';
+                hypInline.style.display = 'none';
+            }
+            // Render text difference using backend merge, using cleaned texts in deep model
             const textDiffDiv = document.getElementById('textDifference');
             if (textDiffDiv) {
-                const referenceText = document.getElementById('referenceText').value.trim();
-                const hypothesisText = document.getElementById('manualText').value.trim();
-                fetch('/merge_texts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        reference: referenceText,
-                        hypothesis: hypothesisText
-                    })
-                })
-                .then(res => res.json())
-                .then(result => {
-                    const refWords = referenceText.split(/\s+/);
-                    const hypWords = hypothesisText.split(/\s+/);
-                    let i = 0, j = 0;
-                    let html = '';
-                    while (i < refWords.length || j < hypWords.length) {
-                        if (i < refWords.length && j < hypWords.length && refWords[i] === hypWords[j]) {
-                            html += refWords[i] + ' ';
-                            i++; j++;
-                        } else if (i < refWords.length && j < hypWords.length && refWords[i] !== hypWords[j]) {
-                            // Substitution: show ref as yellow+strike, hyp as yellow
-                            html += `<span class=\"diff-substitution diff-strike\">${refWords[i]}</span> <span class=\"diff-substitution\">${hypWords[j]}</span> `;
-                            i++; j++;
-                        } else if (i < refWords.length) {
-                            // Deletion: show ref as red
-                            html += `<span class=\"diff-deletion\">${refWords[i]}</span> `;
-                            i++;
-                        } else if (j < hypWords.length) {
-                            // Insertion: show hyp as green highlight + line-through
-                            html += `<span class=\"diff-insertion diff-strike\">${hypWords[j]}</span> `;
-                            j++;
-                        }
-                    }
-                    textDiffDiv.innerHTML = html.trim();
-                    // Apply the same box design as error cards
-                    textDiffDiv.classList.add('custom-diff-box');
-                });
+                let referenceText, hypothesisText;
+                if (currentModel === 'deep' && data.cleaned_reference && data.cleaned_hypothesis) {
+                    referenceText = data.cleaned_reference.trim();
+                    hypothesisText = data.cleaned_hypothesis.trim();
+                } else {
+                    referenceText = document.getElementById('referenceText').value.trim();
+                    hypothesisText = document.getElementById('manualText').value.trim();
+                }
+                textDiffDiv.innerHTML = renderTextDiff(referenceText, hypothesisText);
+                textDiffDiv.classList.add('custom-diff-box');
             }
             // Show the download button after analysis
             const downloadMLBtn = document.getElementById('downloadReportBtn');
@@ -430,8 +415,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to run detailed analysis fetch and update graphs
     async function runDetailedAnalysis() {
         const container = document.getElementById('detailedAnalysisImages');
-        const reference = document.getElementById('referenceText').value.trim();
-        const hypothesis = document.getElementById('manualText').value.trim();
+        let reference, hypothesis;
+        if (currentModel === 'deep') {
+            reference = getCleanedText('cleanedReferenceInline', 'referenceText');
+            hypothesis = getCleanedText('cleanedRecognitionInline', 'manualText');
+        } else {
+            reference = document.getElementById('referenceText').value.trim();
+            hypothesis = document.getElementById('manualText').value.trim();
+        }
         const response = await fetch('/detailed_analysis_images', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -650,8 +641,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- ML Analysis Fetch/Render ---
     async function runMLAnalysis() {
-        const reference = document.getElementById('referenceText').value.trim();
-        const hypothesis = document.getElementById('manualText').value.trim();
+        let reference, hypothesis;
+        if (currentModel === 'deep') {
+            reference = getCleanedText('cleanedReferenceInline', 'referenceText');
+            hypothesis = getCleanedText('cleanedRecognitionInline', 'manualText');
+        } else {
+            reference = document.getElementById('referenceText').value.trim();
+            hypothesis = document.getElementById('manualText').value.trim();
+        }
         try {
             const response = await fetch('/detailed_analysis_images', {
                 method: 'POST',
@@ -754,7 +751,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- NLP Analysis Fetch/Render ---
     async function runNLPAnalysis(forceReload = false) {
-        const hypothesis = document.getElementById('manualText').value.trim();
+        let hypothesis;
+        if (currentModel === 'deep') {
+            hypothesis = getCleanedText('cleanedRecognitionInline', 'manualText');
+        } else {
+            hypothesis = document.getElementById('manualText').value.trim();
+        }
         if (!hypothesis) {
             showError('Recognized text is required for NLP analysis');
             return;
@@ -827,5 +829,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 againNLPBtn.innerHTML = originalHtml;
         }
         });
+    }
+
+    // Model selection logic for toggle button group
+    let currentModel = 'normal';
+    const normalModelBtn = document.getElementById('normalModelBtn');
+    const deepModelBtn = document.getElementById('deepModelBtn');
+    function setModel(model) {
+        currentModel = model;
+        const refInline = document.getElementById('cleanedReferenceInline');
+        const hypInline = document.getElementById('cleanedRecognitionInline');
+        if (model === 'deep') {
+            document.body.classList.add('deep-model');
+            deepModelBtn.classList.add('active');
+            normalModelBtn.classList.remove('active');
+            // If cleaned text is present in data attributes, show it
+            const refVal = refInline?.getAttribute('data-cleaned') || '';
+            const hypVal = hypInline?.getAttribute('data-cleaned') || '';
+            if (refVal) {
+                refInline.innerHTML = `<span class='cleaned-label'><i class='fas fa-broom'></i> Cleaned:</span> <span class='cleaned-value'>${refVal}</span>`;
+                refInline.style.display = 'block';
+            }
+            if (hypVal) {
+                hypInline.innerHTML = `<span class='cleaned-label'><i class='fas fa-broom'></i> Cleaned:</span> <span class='cleaned-value'>${hypVal}</span>`;
+                hypInline.style.display = 'block';
+            }
+        } else {
+            document.body.classList.remove('deep-model');
+            normalModelBtn.classList.add('active');
+            deepModelBtn.classList.remove('active');
+            if (refInline) refInline.style.display = 'none';
+            if (hypInline) hypInline.style.display = 'none';
+        }
+    }
+    if (normalModelBtn && deepModelBtn) {
+        normalModelBtn.addEventListener('click', () => setModel('normal'));
+        deepModelBtn.addEventListener('click', () => setModel('deep'));
+    }
+    setModel('normal'); // Default
+
+    // Helper to get cleaned text in deep mode
+    function getCleanedText(id, fallbackId) {
+        const elem = document.getElementById(id);
+        if (elem && elem.querySelector('.cleaned-value')) {
+            return elem.querySelector('.cleaned-value').textContent.trim();
+        } else if (fallbackId) {
+            const fallbackElem = document.getElementById(fallbackId);
+            return fallbackElem ? fallbackElem.value.trim() : '';
+        }
+        return '';
+    }
+
+    // Add this function for word-level diff rendering
+    function renderTextDiff(reference, recognition) {
+        // Split into words for word-level diff
+        const refWords = reference.trim().split(/\s+/);
+        const recWords = recognition.trim().split(/\s+/);
+        // Join with special separator to avoid accidental merges
+        const SEP = '␣';
+        const refStr = refWords.join(SEP);
+        const recStr = recWords.join(SEP);
+        // Use diff-match-patch
+        const dmp = new diff_match_patch();
+        const diffs = dmp.diff_main(refStr, recStr);
+        dmp.diff_cleanupSemantic(diffs);
+        // Convert back to word-level and HTML
+        let html = '';
+        diffs.forEach(([op, data]) => {
+            const words = data.split(SEP).filter(Boolean);
+            if (op === 0) { // Equal
+                html += words.join(' ') + ' ';
+            } else if (op === -1) { // Deletion
+                html += words.map(w => `<span class="diff-deletion diff-strike">${w}</span>`).join(' ') + ' ';
+            } else if (op === 1) { // Insertion
+                html += words.map(w => `<span class="diff-insertion">${w}</span>`).join(' ') + ' ';
+            }
+        });
+        return html.trim();
     }
 });

@@ -17,6 +17,10 @@
                 <h1>SpeechWER Analyzer</h1>
             </div>
             <p class="tagline">Measure Speech Recognition Accuracy</p>
+            <div id="modelToggleGroup" class="model-toggle-group">
+                <button id="normalModelBtn" class="model-toggle-btn active" data-model="normal">Normal Model</button>
+                <button id="deepModelBtn" class="model-toggle-btn" data-model="deep">Deep Model</button>
+            </div>
         </header>
 
         <div class="control-panel">
@@ -60,11 +64,13 @@
             <div class="text-box reference-box">
                 <h3><i class="fas fa-book-open"></i> Reference Text</h3>
                 <textarea id="referenceText" placeholder="Enter the correct transcript here..."></textarea>
+                <div id="cleanedReferenceInline" class="cleaned-text-inline" style="display:none;"></div>
             </div>
             
             <div class="text-box result-box">
                 <h3><i class="fas fa-wave-square"></i> Recognized Text</h3>
                 <textarea id="manualText" readonly></textarea>
+                <div id="cleanedRecognitionInline" class="cleaned-text-inline" style="display:none;"></div>
             </div>
         </div>
 
@@ -147,5 +153,6 @@
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://unpkg.com/diff-match-patch@1.0.5/index.js"></script>
 </body>
 </html>
