@@ -29,6 +29,18 @@ import string
 import re
 import whisper
 from flask_socketio import SocketIO, emit
+import traceback
+from jiwer import wer as jiwer_wer
+import unicodedata
+
+# Hindi transliteration import (must be global)
+try:
+    from indic_transliteration.sanscript import transliterate, DEVANAGARI, ITRANS, HK
+except ImportError:
+    transliterate = None
+    DEVANAGARI = None
+    ITRANS = None
+    HK = None
 
 # Ensure NLTK resources are downloaded
 def download_nltk_resources():
@@ -120,13 +132,24 @@ def transcribe():
     try:
         mode = request.form.get('mode')
         reference = request.form.get('reference', '')
+        language = request.form.get('language', 'en')  # Get language, default to English
         
         if mode == 'microphone':
             audio_file = request.files.get('audio')
             temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'audio.webm')
             audio_file.save(temp_path)
             wav_path = convert_to_wav(temp_path)
-            filetype = 'audio'
+            # Use SpeechRecognition for mic
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio_data = recognizer.record(source)
+            try:
+                hypothesis = recognizer.recognize_google(audio_data)
+            except Exception as e:
+                hypothesis = f"[Recognition error: {e}]"
+            os.unlink(temp_path)
+            os.unlink(wav_path)
+            return jsonify({'hypothesis': hypothesis, 'reference': reference})
         elif mode == 'file_upload':
             uploaded_file = request.files.get('file')
             filename = uploaded_file.filename.lower()
@@ -152,8 +175,26 @@ def transcribe():
         if mode == 'microphone' or (mode == 'file_upload' and filetype == 'audio'):
             # Use Whisper for transcription
             model = whisper.load_model('base')  # You can use 'small', 'medium', 'large' for better accuracy
+            # Auto-detect language by not passing language param
             result = model.transcribe(wav_path)
             hypothesis = result['text'].strip()
+            # Detect if output is not in Latin script and transliterate if possible
+            def is_latin(s):
+                for c in s:
+                    if c.isalpha():
+                        name = unicodedata.name(c, '')
+                        if 'LATIN' not in name:
+                            return False
+                return True
+            if not is_latin(hypothesis):
+                # Try Devanagari to Latin
+                if transliterate is not None and any('DEVANAGARI' in unicodedata.name(c, '') for c in hypothesis if c.isalpha()):
+                    try:
+                        hypothesis = transliterate(hypothesis, DEVANAGARI, HK)
+                    except Exception as e:
+                        hypothesis = '[Transliteration error] ' + hypothesis
+                # Optionally, add Arabic/Urdu to Latin transliteration here
+                # else: ...
             os.unlink(temp_path)
             os.unlink(wav_path)
         elif mode == 'file_upload' and filetype == 'image':
@@ -183,48 +224,235 @@ def transcribe():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+def kensho_normalize(text):
+    """
+    Kensho-style text normalization:
+    - Remove ALL non-alphanumeric chars (including underscores)
+    - Collapse multiple spaces to single space
+    - Convert to lowercase
+    - Strip leading/trailing whitespace
+    """
+    # Remove all non-alphanumeric chars (including underscores)
+    text = re.sub(r'[^\w\s]|_', '', text)
+    # Convert to lowercase
+    text = text.lower()
+    # Collapse multiple spaces to single space and strip
+    text = ' '.join(text.split())
+    return text
+
+def get_kensho_wer(reference, hypothesis):
+    """
+    Calculate WER using Kensho's approach:
+    - Word-level Levenshtein alignment
+    - Individual substitution counting
+    - Strict normalization
+    """
+    # Normalize both texts
+    ref_norm = kensho_normalize(reference)
+    hyp_norm = kensho_normalize(hypothesis)
+    
+    # Split into words
+    ref_words = ref_norm.split()
+    hyp_words = hyp_norm.split()
+    
+    if not ref_words:
+        return 1.0, [], [], [], []
+    
+    # Get word-level alignment
+    matcher = SequenceMatcher(None, ref_words, hyp_words)
+    
+    substitutions = []
+    deletions = []
+    insertions = []
+    alignment = []
+    
+    # Track error counts for WER calculation
+    num_substitutions = 0
+    num_deletions = 0
+    num_insertions = 0
+    
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'equal':
+            # Words match exactly
+            for ref_w in ref_words[i1:i2]:
+                alignment.append(('equal', ref_w))
+        elif tag == 'replace':
+            # Handle substitutions word by word
+            ref_segment = ref_words[i1:i2]
+            hyp_segment = hyp_words[j1:j2]
+            
+            min_len = min(len(ref_segment), len(hyp_segment))
+            # Count one-to-one substitutions
+            for idx in range(min_len):
+                substitutions.append(f"{ref_segment[idx]} → {hyp_segment[idx]}")
+                alignment.append(('substitution', ref_segment[idx], hyp_segment[idx]))
+                num_substitutions += 1
+            
+            # Extra reference words are deletions
+            if len(ref_segment) > min_len:
+                for ref_w in ref_segment[min_len:]:
+                    deletions.append(ref_w)
+                    alignment.append(('deletion', ref_w))
+                    num_deletions += 1
+            # Extra hypothesis words are insertions
+            elif len(hyp_segment) > min_len:
+                for hyp_w in hyp_segment[min_len:]:
+                    insertions.append(hyp_w)
+                    alignment.append(('insertion', hyp_w))
+                    num_insertions += 1
+        elif tag == 'delete':
+            # Count deletions
+            for ref_w in ref_words[i1:i2]:
+                deletions.append(ref_w)
+                alignment.append(('deletion', ref_w))
+                num_deletions += 1
+        elif tag == 'insert':
+            # Count insertions
+            for hyp_w in hyp_words[j1:j2]:
+                insertions.append(hyp_w)
+                alignment.append(('insertion', hyp_w))
+                num_insertions += 1
+    
+    # Calculate Kensho WER
+    total_errors = num_substitutions + num_deletions + num_insertions
+    wer = total_errors / len(ref_words)
+    
+    return wer, substitutions, deletions, insertions, alignment
+
 @app.route('/calculate_wer', methods=['POST'])
 def calculate_wer():
-    data = request.get_json()
     try:
-        model = data.get('model', 'normal')
-        reference = data['reference']
-        hypothesis = data['hypothesis']
-        # Always compute cleaned versions for display
-        cleaned_reference = clean_text_for_deep(reference)
-        cleaned_hypothesis = clean_text_for_deep(hypothesis)
-        if model == 'deep':
-            ref_words = cleaned_reference.split()
-            hyp_words = cleaned_hypothesis.split()
-        else:
-            ref_words = reference.lower().split()
-            hyp_words = hypothesis.lower().split()
-        matcher = SequenceMatcher(None, ref_words, hyp_words)
-        substitutions = []
-        deletions = []
-        insertions = []
-        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag == 'replace':
-                subs = list(zip(ref_words[i1:i2], hyp_words[j1:j2]))
-                substitutions.extend([f"{r} → {h}" for r, h in subs])
-            elif tag == 'delete':
-                deletions.extend(ref_words[i1:i2])
-            elif tag == 'insert':
-                insertions.extend(hyp_words[j1:j2])
-        total_errors = len(substitutions) + len(deletions) + len(insertions)
-        wer = total_errors / len(ref_words) if ref_words else 1.0
-        response = {
-            'wer': wer,
-            'substitutions': substitutions,
-            'deletions': deletions,
-            'insertions': insertions,
-            'hypothesis': hypothesis,
-            'cleaned_reference': cleaned_reference,
-            'cleaned_hypothesis': cleaned_hypothesis
-        }
-        print("CLEANED DEBUG:", repr(cleaned_reference), "|", repr(cleaned_hypothesis))
-        return jsonify(response)
+        data = request.get_json()
+        if not data:
+            print("ERROR: No JSON data received")
+            return jsonify({'error': 'No data received'}), 400
+            
+        reference = data.get('reference')
+        hypothesis = data.get('hypothesis')
+        model = data.get('model', 'normal')  # Get model type, default to normal
+        
+        if not reference or not hypothesis:
+            print("ERROR: Missing required fields", {'reference': bool(reference), 'hypothesis': bool(hypothesis)})
+            return jsonify({'error': 'Missing required text fields'}), 400
+            
+        print("DEBUG: Received texts:", {'reference': reference, 'hypothesis': hypothesis, 'model': model})
+        
+        try:
+            if model == 'deep':
+                # Use normalized (cleaned) texts for all calculations and diff
+                ref_clean = kensho_normalize(reference)
+                hyp_clean = kensho_normalize(hypothesis)
+                wer_value = jiwer_wer(ref_clean, hyp_clean)
+                # Use cleaned for alignment and error breakdown
+                _, substitutions, deletions, insertions, alignment = get_kensho_wer(ref_clean, hyp_clean)
+                # Generate aligned_html using cleaned texts
+                aligned_html = []
+                ref_words = ref_clean.split()
+                hyp_words = hyp_clean.split()
+                ref_lower = [w.lower() for w in ref_words]
+                hyp_lower = [w.lower() for w in hyp_words]
+                matcher = SequenceMatcher(None, ref_lower, hyp_lower)
+                for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                    if tag == 'equal':
+                        for ref_w, hyp_w in zip(ref_words[i1:i2], hyp_words[j1:j2]):
+                            if ref_w != hyp_w:
+                                aligned_html.append(f'<span class="diff-case-sensitive">{ref_w}</span>')
+                                aligned_html.append(f'<span class="diff-case-sensitive-strike">{hyp_w}</span>')
+                            else:
+                                aligned_html.append(ref_w)
+                    elif tag == 'replace':
+                        for ref_w in ref_words[i1:i2]:
+                            aligned_html.append(f'<span class="diff-substitution">{ref_w}</span>')
+                        for hyp_w in hyp_words[j1:j2]:
+                            aligned_html.append(f'<span class="diff-substitution">{hyp_w}</span>')
+                    elif tag == 'delete':
+                        for ref_w in ref_words[i1:i2]:
+                            aligned_html.append(f'<span class="diff-deletion">{ref_w}</span>')
+                    elif tag == 'insert':
+                        for hyp_w in hyp_words[j1:j2]:
+                            aligned_html.append(f'<span class="diff-insertion">{hyp_w}</span>')
+                response = {
+                    'wer': wer_value,
+                    'substitutions': substitutions,
+                    'deletions': deletions,
+                    'insertions': insertions,
+                    'aligned_html': ' '.join(aligned_html),
+                    'cleaned_reference': ref_clean,
+                    'cleaned_hypothesis': hyp_clean
+                }
+            else:
+                # Use Kensho WER for normal mode
+                wer_value, substitutions, deletions, insertions, alignment = get_kensho_wer(reference, hypothesis)
+                # Generate HTML for aligned text display with case-sensitive and punctuation highlighting
+                aligned_html = []
+                def split_with_punctuation(text):
+                    return [t for t in re.findall(r"[\w']+|[.,!?;]|[\s]", text) if t.strip()]
+                ref_tokens = split_with_punctuation(reference)
+                hyp_tokens = split_with_punctuation(hypothesis)
+                def normalize_for_comparison(token):
+                    return re.sub(r'[^\w\s]', '', token.lower())
+                ref_norm = [normalize_for_comparison(t) for t in ref_tokens]
+                hyp_norm = [normalize_for_comparison(t) for t in hyp_tokens]
+                ref_indices = [i for i, t in enumerate(ref_norm) if t]
+                hyp_indices = [i for i, t in enumerate(hyp_norm) if t]
+                ref_norm = [t for t in ref_norm if t]
+                hyp_norm = [t for t in hyp_norm if t]
+                matcher = SequenceMatcher(None, ref_norm, hyp_norm)
+                for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                    if tag == 'equal':
+                        for ref_idx, hyp_idx in zip(ref_indices[i1:i2], hyp_indices[j1:j2]):
+                            ref_token = ref_tokens[ref_idx]
+                            hyp_token = hyp_tokens[hyp_idx]
+                            is_punct_ref = bool(re.match(r'^[.,!?;]$', ref_token))
+                            is_punct_hyp = bool(re.match(r'^[.,!?;]$', hyp_token))
+                            if is_punct_ref or is_punct_hyp:
+                                if ref_token != hyp_token:
+                                    if ref_token:
+                                        aligned_html.append(f'<span class="diff-punctuation">{ref_token}</span>')
+                                    if hyp_token:
+                                        aligned_html.append(f'<span class="diff-punctuation-strike">{hyp_token}</span>')
+                                else:
+                                    aligned_html.append(ref_token)
+                            elif ref_token.lower() == hyp_token.lower() and ref_token != hyp_token:
+                                aligned_html.append(f'<span class="diff-case-sensitive">{ref_token}</span>')
+                                aligned_html.append(f'<span class="diff-case-sensitive-strike">{hyp_token}</span>')
+                            else:
+                                aligned_html.append(ref_token)
+                    elif tag == 'replace':
+                        for ref_idx in ref_indices[i1:i2]:
+                            aligned_html.append(f'<span class="diff-substitution">{ref_tokens[ref_idx]}</span>')
+                        for hyp_idx in hyp_indices[j1:j2]:
+                            aligned_html.append(f'<span class="diff-substitution">{hyp_tokens[hyp_idx]}</span>')
+                    elif tag == 'delete':
+                        for ref_idx in ref_indices[i1:i2]:
+                            aligned_html.append(f'<span class="diff-deletion">{ref_tokens[ref_idx]}</span>')
+                    elif tag == 'insert':
+                        for hyp_idx in hyp_indices[j1:j2]:
+                            aligned_html.append(f'<span class="diff-insertion">{hyp_tokens[hyp_idx]}</span>')
+                response = {
+                    'wer': wer_value,
+                    'substitutions': substitutions,
+                    'deletions': deletions,
+                    'insertions': insertions,
+                    'aligned_html': ' '.join(aligned_html),
+                    'cleaned_reference': None,
+                    'cleaned_hypothesis': None
+                }
+            print("DEBUG: Successful response:", {
+                'model': model,
+                'wer': wer_value,
+                'num_substitutions': len(substitutions),
+                'num_deletions': len(deletions),
+                'num_insertions': len(insertions)
+            })
+            return jsonify(response)
+        except Exception as e:
+            print("ERROR: Processing error:", str(e))
+            print("ERROR: Full traceback:", traceback.format_exc())
+            return jsonify({'error': f'Error processing text: {str(e)}'}), 400
     except Exception as e:
+        print("ERROR: Request handling error:", str(e))
+        print("ERROR: Full traceback:", traceback.format_exc())
         return jsonify({'error': str(e)}), 400
 
 @app.route('/detailed_analysis', methods=['POST'])

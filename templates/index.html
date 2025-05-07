@@ -81,33 +81,60 @@
         <div id="results" class="results-card hidden">
             <div class="results-header">
                 <h2><i class="fas fa-poll-h"></i> Analysis Results</h2>
-                <div class="wer-score-box">
-                    <span class="wer-label">Word Error Rate:</span>
-                    <span class="wer-value">0.00%</span>
+            </div>
+
+            <div class="stats-container" style="margin-bottom:2.2rem;">
+                <h3><i class="fas fa-chart-line"></i> Text Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Words (Ref)</div>
+                        <div class="stat-value" id="totalWordsRef">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Total Words (Hyp)</div>
+                        <div class="stat-value" id="totalWordsHyp">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Accuracy</div>
+                        <div class="stat-value" id="accuracy">0%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Word Error Rate</div>
+                        <div class="stat-value wer-value" style="font-weight:bold;font-size:1.4em;color:#2a2a72;">0.00%</div>
+                    </div>
                 </div>
             </div>
 
             <div class="error-breakdown">
                 <div class="error-card substitution-card">
                     <div class="error-header">
-                        <i class="fas fa-exchange-alt error-icon"></i>
-                        <h3>Substitutions</h3>
+                        <div class="error-title">
+                            <i class="fas fa-exchange-alt error-icon"></i>
+                            <h3>Substitutions</h3>
+                        </div>
+                        <span class="error-count" id="subCount">0</span>
                     </div>
                     <ul class="error-list"></ul>
                 </div>
                 
                 <div class="error-card deletion-card">
                     <div class="error-header">
-                        <i class="fas fa-trash-alt error-icon"></i>
-                        <h3>Deletions</h3>
+                        <div class="error-title">
+                            <i class="fas fa-trash-alt error-icon"></i>
+                            <h3>Deletions</h3>
+                        </div>
+                        <span class="error-count" id="delCount">0</span>
                     </div>
                     <ul class="error-list"></ul>
                 </div>
                 
                 <div class="error-card insertion-card">
                     <div class="error-header">
-                        <i class="fas fa-plus-circle error-icon"></i>
-                        <h3>Insertions</h3>
+                        <div class="error-title">
+                            <i class="fas fa-plus-circle error-icon"></i>
+                            <h3>Insertions</h3>
+                        </div>
+                        <span class="error-count" id="insCount">0</span>
                     </div>
                     <ul class="error-list"></ul>
                 </div>

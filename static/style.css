@@ -340,7 +340,8 @@ textarea:focus {
 .error-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
+    width: 100%;
     margin-bottom: 1.5rem;
 }
 
@@ -1042,43 +1043,58 @@ textarea:focus {
 .text-diff-section {
     margin-top: 2rem;
 }
+
 .text-diff-box {
-    background: #f8fbff;
-    border-radius: 0.75rem;
-    padding: 1.2rem;
-    font-size: 1.08rem;
-    min-height: 48px;
-    box-shadow: 0 1px 4px #009ffd11;
+    background: #ffffff;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     word-break: break-word;
-    line-height: 1.7;
+    white-space: pre-wrap;
 }
+
+/* Kensho-style diff classes */
 .diff-substitution {
     background: #fff3cd;
     color: #856404;
-    border-radius: 0.3em;
-    padding: 0.1em 0.3em;
-    margin: 0 0.1em;
-    font-weight: 600;
+    border: 1px solid #ffeeba;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
 }
+
 .diff-deletion {
-    background: #f8d7da;
-    color: #721c24;
-    border-radius: 0.3em;
-    padding: 0.1em 0.3em;
-    margin: 0 0.1em;
-    font-weight: 600;
-}
-.diff-insertion {
-    background: #d4edda;
-    color: #155724;
-    border-radius: 0.3em;
-    padding: 0.1em 0.3em;
-    margin: 0 0.1em;
-    font-weight: 600;
-}
-.diff-strike {
+    color: #dc3545;
     text-decoration: line-through;
-    opacity: 0.7;
+    text-decoration-color: #dc3545;
+    text-decoration-thickness: 2px;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
+}
+
+.diff-insertion {
+    color: #28a745;
+    border-bottom: 2px solid #28a745;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
+}
+
+/* Remove old diff styles */
+.diff-strike {
+    display: none;
 }
 
 /* Modern Dot Loader */
@@ -1482,4 +1498,119 @@ textarea:focus {
 .deep-model #againNLPBtn {
     box-shadow: 0 0 24px 4px #7fd8ffcc, 0 0 8px #009ffd99 !important;
     transition: box-shadow 0.3s;
+}
+
+.diff-case-sensitive {
+    background: #e6f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
+}
+
+.diff-case-sensitive-strike {
+    text-decoration: line-through;
+    text-decoration-color: #b3d9ff;
+    text-decoration-thickness: 2px;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
+}
+
+.diff-punctuation {
+    background: rgba(230, 243, 255, 0.4);
+    border: 1px solid rgba(179, 217, 255, 0.5);
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
+    position: relative;
+}
+
+.diff-punctuation-strike {
+    text-decoration: line-through;
+    text-decoration-color: rgba(179, 217, 255, 0.7);
+    text-decoration-thickness: 2px;
+    padding: 2px 6px;
+    margin: 0 2px;
+    font-weight: 500;
+    display: inline-block;
+    line-height: 1.4;
+}
+
+.error-title {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.error-count {
+    font-size: 1.35em;
+    font-weight: bold;
+    color: #222;
+    margin-left: 0.7em;
+    margin-right: 0.1em;
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    display: inline-block;
+    align-self: center;
+    position: static;
+}
+
+.error-count.sub {
+    color: #ffe08a;
+}
+.error-count.del {
+    color: #f14668;
+}
+.error-count.ins {
+    color: #48c774;
+}
+
+.stats-container {
+    background: #f8fbff;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 2.2rem;
+    box-shadow: 0 2px 8px #009ffd22;
+    border-left: 6px solid #009ffd;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+.stat-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 0.8rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 159, 253, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 159, 253, 0.2);
+}
+.stat-label {
+    color: #2a2a72;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+}
+.stat-value {
+    color: #009ffd;
+    font-size: 1.2rem;
+    font-weight: bold;
 }

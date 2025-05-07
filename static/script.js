@@ -6,6 +6,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let mediaRecorder;
     let audioChunks = [];
 
+    // Set default mode to Upload File
+    modeBtns.forEach(b => b.classList.remove('active'));
+    const uploadBtn = Array.from(modeBtns).find(b => b.dataset.mode === 'file_upload');
+    if (uploadBtn) uploadBtn.classList.add('active');
+    // Show only file upload section
+    if (fileSection) fileSection.classList.remove('hidden');
+    if (recordSection) recordSection.classList.add('hidden');
+    if (manualText) manualText.readOnly = true;
+    // Hide image upload section if present
+    const imageSection = document.querySelector('.image-upload-section');
+    if (imageSection) imageSection.classList.add('hidden');
+
     // Mode selection
     modeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -187,26 +199,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const calculateBtn = document.getElementById('calculateBtn');
     let hasAnalyzedOnce = false;
     calculateBtn.addEventListener('click', async () => {
-        const hypothesis = manualText.value;
-        const reference = document.getElementById('referenceText').value;
+        const hypothesis = manualText.value.trim();
+        const reference = document.getElementById('referenceText').value.trim();
+        
         if (!hypothesis || !reference) {
             showError('Both reference and recognized text are required');
             return;
         }
-        // Show loader and disable button
-        calculateBtn.disabled = true;
-        const originalText = hasAnalyzedOnce ? '<i class="fas fa-redo"></i> Again Analysis' : '<i class="fas fa-chart-bar"></i> Analyze Now';
-        calculateBtn.innerHTML = '<span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span>';
-        calculateBtn.style.justifyContent = 'center';
-        await analyzeText(hypothesis, reference);
-        // After analysis, show ML/NLP buttons
-        document.getElementById('mlAnalysisBtn').style.display = 'inline-flex';
-        document.getElementById('nlpAnalysisBtn').style.display = 'inline-flex';
-        // After analysis, change button text and re-enable
-        hasAnalyzedOnce = true;
-        calculateBtn.innerHTML = '<i class="fas fa-redo"></i> Again Analysis';
-        calculateBtn.disabled = false;
-        calculateBtn.style.justifyContent = '';
+        
+        try {
+            // Show loader and disable button
+            calculateBtn.disabled = true;
+            const originalText = hasAnalyzedOnce ? '<i class="fas fa-redo"></i> Again Analysis' : '<i class="fas fa-chart-bar"></i> Analyze Now';
+            calculateBtn.innerHTML = '<span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span><span class="dot-loader-dot"></span>';
+            calculateBtn.style.justifyContent = 'center';
+            
+            await analyzeText(hypothesis, reference);
+            
+            // After analysis, show ML/NLP buttons
+            document.getElementById('mlAnalysisBtn').style.display = 'inline-flex';
+            document.getElementById('nlpAnalysisBtn').style.display = 'inline-flex';
+            
+            // After analysis, change button text and re-enable
+            hasAnalyzedOnce = true;
+            calculateBtn.innerHTML = '<i class="fas fa-redo"></i> Again Analysis';
+            calculateBtn.disabled = false;
+            calculateBtn.style.justifyContent = '';
+            
+        } catch(err) {
+            console.error('Calculate button error:', err);
+            showError(err.message || 'Analysis failed. Please try again.');
+            calculateBtn.disabled = false;
+            calculateBtn.innerHTML = '<i class="fas fa-redo"></i> Again Analysis';
+            calculateBtn.style.justifyContent = '';
+        }
     });
 
     // Audio processing
@@ -215,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('audio', audioBlob, 'recording.wav');
         formData.append('mode', 'microphone');
         formData.append('reference', document.getElementById('referenceText').value);
-
+        // No language parameter sent
         try {
             const response = await fetch('/transcribe', { method: 'POST', body: formData });
             handleResponse(await response.json());
@@ -237,30 +263,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Text analysis
-    async function analyzeText(hypothesis, reference) {
+    async function analyzeText(hypothesis, hypothesis_original) {
         try {
-            console.log('Analyzing text:', { hypothesis, reference, model: currentModel }); // Debug log
+            // Validate inputs
+            if (!hypothesis || !hypothesis_original) {
+                showError('Both reference and recognized text are required');
+                return;
+            }
+
+            console.log('Sending analysis request:', { 
+                hypothesis, 
+                hypothesis_original,
+                model: currentModel 
+            });
+
             const response = await fetch('/calculate_wer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hypothesis, reference, model: currentModel })
+                body: JSON.stringify({
+                    reference: hypothesis_original,
+                    hypothesis: hypothesis,
+                    model: currentModel
+                })
             });
             
+            let data;
+            try {
+                const text = await response.text();
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse response:', text);
+                    throw new Error('Invalid server response format');
+                }
+            } catch (e) {
+                console.error('Error reading response:', e);
+                throw new Error('Failed to read server response');
+            }
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                console.error('Server error response:', data);
+                throw new Error(data.error || `Server error: ${response.status}`);
             }
             
-            const results = await response.json();
-            console.log('Analysis results:', results); // Debug log
-            
-            if (results.error) {
-                throw new Error(results.error);
+            if (data.error) {
+                console.error('Application error:', data.error);
+                throw new Error(data.error);
             }
             
-            displayResults(results);
+            console.log('Analysis response:', data);
+            displayResults(data);
+            
         } catch(err) {
-            console.error('Analysis error:', err); // Debug log
-            showError('Analysis failed. Please try again.');
+            console.error('Analysis error:', err);
+            showError(err.message || 'Analysis failed. Please try again.');
+            // Re-enable the analyze button if it exists
+            const calculateBtn = document.getElementById('calculateBtn');
+            if (calculateBtn) {
+                calculateBtn.disabled = false;
+                calculateBtn.innerHTML = '<i class="fas fa-redo"></i> Again Analysis';
+            }
         }
     }
 
@@ -269,51 +331,66 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const resultsDiv = document.getElementById('results');
             resultsDiv.classList.remove('hidden');
+            
+            // Display WER
             document.querySelector('.wer-value').textContent = `${(data.wer * 100).toFixed(2)}%`;
-            // Always use backend-provided error lists
+            
+            // Calculate and display statistics
+            const refWords = document.getElementById('referenceText').value.trim().split(/\s+/).length;
+            const hypWords = document.getElementById('manualText').value.trim().split(/\s+/).length;
+            const correctWords = refWords - (data.substitutions.length + data.deletions.length + data.insertions.length);
+            const accuracy = (correctWords / refWords * 100).toFixed(2);
+            // document.getElementById('errorRate').textContent = `${errorRate}%`;
+            
+            // Update statistics
+            document.getElementById('totalWordsRef').textContent = refWords;
+            document.getElementById('totalWordsHyp').textContent = hypWords;
+            document.getElementById('accuracy').textContent = `${accuracy}%`;
+            
+            // Update error counts
+            document.getElementById('subCount').textContent = data.substitutions.length;
+            document.getElementById('delCount').textContent = data.deletions.length;
+            document.getElementById('insCount').textContent = data.insertions.length;
+            
+            // Use error lists from server
             populateErrorList('substitution', data.substitutions);
             populateErrorList('deletion', data.deletions);
             populateErrorList('insertion', data.insertions);
+            
             // Show the Detailed Analysis button
             const detailedBtn = document.getElementById('detailedAnalysisBtn');
             if (detailedBtn) detailedBtn.style.display = 'block';
+            
             // Hide the images section until button is clicked again
             const imagesDiv = document.getElementById('detailedAnalysisImages');
             if (imagesDiv) imagesDiv.style.display = 'none';
-            // Show cleaned texts in deep model
+            
+            // Show cleaned texts only in deep model
             const refInline = document.getElementById('cleanedReferenceInline');
             const hypInline = document.getElementById('cleanedRecognitionInline');
-            if (currentModel === 'deep') {
-                refInline.innerHTML = data.cleaned_reference ? `<span class='cleaned-label'><i class='fas fa-broom'></i> Cleaned:</span> <span class='cleaned-value'>${data.cleaned_reference}</span>` : '';
-                hypInline.innerHTML = data.cleaned_hypothesis ? `<span class='cleaned-label'><i class='fas fa-broom'></i> Cleaned:</span> <span class='cleaned-value'>${data.cleaned_hypothesis}</span>` : '';
-                refInline.style.display = data.cleaned_reference ? 'block' : 'none';
-                hypInline.style.display = data.cleaned_hypothesis ? 'block' : 'none';
-                // Store for model switching
-                refInline.setAttribute('data-cleaned', data.cleaned_reference || '');
-                hypInline.setAttribute('data-cleaned', data.cleaned_hypothesis || '');
+            
+            if (currentModel === 'deep' && data.cleaned_reference && data.cleaned_hypothesis) {
+                refInline.innerHTML = `<span class='cleaned-label'><i class='fas fa-broom'></i> Normalized:</span> <span class='cleaned-value'>${data.cleaned_reference}</span>`;
+                hypInline.innerHTML = `<span class='cleaned-label'><i class='fas fa-broom'></i> Normalized:</span> <span class='cleaned-value'>${data.cleaned_hypothesis}</span>`;
+                refInline.style.display = 'block';
+                hypInline.style.display = 'block';
             } else {
                 refInline.style.display = 'none';
                 hypInline.style.display = 'none';
             }
-            // Render text difference using backend merge, using cleaned texts in deep model
+            
+            // Display aligned text with differences
             const textDiffDiv = document.getElementById('textDifference');
-            if (textDiffDiv) {
-                let referenceText, hypothesisText;
-                if (currentModel === 'deep' && data.cleaned_reference && data.cleaned_hypothesis) {
-                    referenceText = data.cleaned_reference.trim();
-                    hypothesisText = data.cleaned_hypothesis.trim();
-                } else {
-                    referenceText = document.getElementById('referenceText').value.trim();
-                    hypothesisText = document.getElementById('manualText').value.trim();
-                }
-                textDiffDiv.innerHTML = renderTextDiff(referenceText, hypothesisText);
+            if (textDiffDiv && data.aligned_html) {
+                textDiffDiv.innerHTML = data.aligned_html;
                 textDiffDiv.classList.add('custom-diff-box');
             }
+            
             // Show the download button after analysis
             const downloadMLBtn = document.getElementById('downloadReportBtn');
             if (downloadMLBtn) downloadMLBtn.style.display = 'inline-flex';
         } catch(err) {
-            console.error('Display results error:', err); // Debug log
+            console.error('Display results error:', err);
             showError('Error displaying results');
         }
     }
@@ -329,9 +406,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Error notification
     function showError(message) {
         const errorDiv = document.getElementById('error');
+        if (!errorDiv) return;
+        
         errorDiv.textContent = message;
         errorDiv.classList.remove('hidden');
-        setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+        
+        // Scroll error into view
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            errorDiv.classList.add('hidden');
+        }, 5000);
     }
 
     // Detailed Analysis Button Handler
@@ -878,33 +964,5 @@ document.addEventListener('DOMContentLoaded', () => {
             return fallbackElem ? fallbackElem.value.trim() : '';
         }
         return '';
-    }
-
-    // Add this function for word-level diff rendering
-    function renderTextDiff(reference, recognition) {
-        // Split into words for word-level diff
-        const refWords = reference.trim().split(/\s+/);
-        const recWords = recognition.trim().split(/\s+/);
-        // Join with special separator to avoid accidental merges
-        const SEP = '␣';
-        const refStr = refWords.join(SEP);
-        const recStr = recWords.join(SEP);
-        // Use diff-match-patch
-        const dmp = new diff_match_patch();
-        const diffs = dmp.diff_main(refStr, recStr);
-        dmp.diff_cleanupSemantic(diffs);
-        // Convert back to word-level and HTML
-        let html = '';
-        diffs.forEach(([op, data]) => {
-            const words = data.split(SEP).filter(Boolean);
-            if (op === 0) { // Equal
-                html += words.join(' ') + ' ';
-            } else if (op === -1) { // Deletion
-                html += words.map(w => `<span class="diff-deletion diff-strike">${w}</span>`).join(' ') + ' ';
-            } else if (op === 1) { // Insertion
-                html += words.map(w => `<span class="diff-insertion">${w}</span>`).join(' ') + ' ';
-            }
-        });
-        return html.trim();
     }
 });
