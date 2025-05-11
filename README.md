@@ -1,229 +1,219 @@
-# SpeechWER – Speech Recognition Error Analysis Tool  
-**By Muhammad Abrash**
+# **SpeechWER Web Application**
+
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10.10-blue)](https://www.python.org/downloads/release/python-31010/)
+[![Flask](https://img.shields.io/badge/Flask-3.0-blue)](https://flask.palletsprojects.com/)
+[![Ffmpeg](https://img.shields.io/badge/Ffmpeg-4.2-blue)](https://github.com/BtbN/FFmpeg-Builds/releases)
+[![ASM Model](https://img.shields.io/badge/ASM_Model-blue)](https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/deepspeech-0.9.3-models.pbmm)
 
 ---
 
 ## **Table of Contents**
 
-1. Introduction  
-2. Features  
-3. Technologies Used  
-4. Installation & Setup  
-5. Project Structure  
-6. Technical Components  
-7. API Endpoints  
-8. Usage Guide  
-9. Troubleshooting  
-10. References  
-11. Contact Information  
+1.  Project Overview
+2.  System Architecture
+3.  Installation Guide
+4.  Key Features Explanation
+5.  API Documentation
+6.  Code Structure
+7.  Usage Examples
+9.  Troubleshooting
+10. User Interface(UI)
+11. References
+12. Contact Information
 
 ---
 
-## **Introduction**
+### 1. Project Overview
 
-**SpeechWER** is a web-based speech recognition analysis tool that calculates Word Error Rate (WER) and provides detailed error analysis. Built as a Flask application, it supports:
+The SpeechWER Analyzer is a software tool designed to convert speech to text, calculate the Word Error Rate, perform NLP analysis, provide interactive visualizations, and generate PDF reports [EDITOR#0]. It helps understand how Machine Learning, NLP, and Data Visualization are connected to these tasks (Overview: In This Term Project, You Need to Develop Software Which Will Convert Speech into Text Using Python and Whisper, Calculate Word Error Rate (WER), and Understand How Machine Learning, NLP, and Data Visualization Are Connected to These Tasks., n.d.).
 
-- Audio recording via microphone  
-- File uploads (audio/images)  
-- Optical Character Recognition (OCR) for images  
-- Interactive visualizations  
-- PDF report generation  
+<aside>
+
+💻 **Tech Stack:**
+
+```
+- Flask
+- Vanilla JS
+- HTML/CSS
+```
+</aside>
+
+**Core Features:**
+
+1. Audio file transcription with DeepSpeech/Vosk ASR
+2. Word Error Rate calculation
+3. NLP analysis (tokenization, normalization, stemming, lemmatization, stop words)
+4. Interactive visualization (confusion matrixs, error distributions, frequency distribution)
+5. PDF report generation
 
 ---
 
-## **Features**
+### 2. System Architecture
 
-### 1. **Multi-Mode Input**
-- Microphone recording (WebM format)  
-- Audio file upload (WAV/MP3)  
-- Image upload for text extraction  
-- Manual text input  
-
-### 2. **Core Analysis**
-- Word Error Rate (WER) calculation  
-- Error classification: Substitutions / Deletions / Insertions  
-- Text diff visualization  
-
-### 3. **Advanced Analytics**
-- Confusion matrix  
-- Error distribution pie chart  
-- Word frequency comparison  
-- Positional regression analysis  
-
-### 4. **Export**
-- PDF reports with visualizations  
-- Interactive HTML output  
-
----
-
-## **Technologies Used**
-
-### **Backend**
-- Flask (Web framework)  
-- SpeechRecognition (Audio processing)  
-- PyDub (Audio conversion)  
-- PyTesseract (Image OCR)  
-- scikit-learn (Metrics calculation)  
-- FPDF (PDF generation)  
-
-### **Frontend**
-- Plotly (Visualizations)  
-- Vanilla JavaScript (UI interactions)  
-- CSS Animations (Modern styling)  
-
-### **Dependencies**
-```bash
-Flask==3.0.0  
-SpeechRecognition==3.10.0  
-pydub==0.25.1  
-pytesseract==0.3.10  
-plotly==5.18.0  
-fpdf2==2.7.7  
-```
-
----
-
-## **Installation & Setup**
-
-### **Prerequisites**
-```bash
-# Ubuntu/Debian
-sudo apt install ffmpeg tesseract-ocr
-```
-
-### **Python Environment**
-```bash
-python -m venv venv  
-source venv/bin/activate  
-pip install -r requirements.txt
-```
-
-### **Configuration**
-Set Tesseract path in **`app.py`** if needed:
-```python
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
-```
-
-### **Run Application**
-```bash
-python app.py
-```
-
-Access at: **http://localhost:5000**
-
----
-
-## **Project Structure**
+**File Structure:**
 
 ```
-speechwer/
-├── app.py              # Flask backend
-├── templates/          # HTML files
-│   └── index.html
+SpeechWER/
+├── app.py         # Flask backend
+├── templates/
+│   └── index.html   # Main UI
 ├── static/
-│   ├── script.js       # Frontend logic
-│   └── style.css       # Styling
-├── requirements.txt    # Dependencies
-└── tmp/                # Temporary uploads (auto-created)
+│   ├── style.css    # Styling
+│   └── script.js    # Frontend logic
+└── requirements.txt # Dependencies
 ```
 
 ---
 
-## **Technical Components**
+### 3. Installation Guide
 
-### 1. **Audio Processing Pipeline**
+**Requirements:**
+
+- Python 3.9+ ([Python 3.10.10](https://www.python.org/downloads/release/python-31010/) Recommended)
+- [FFmpeg](https://github.com/BtbN/FFmpeg-Builds/releases) installed (download ```ffmpeg-master-latest-win64-gpl.zip``` from the link)
+
+**Step-by-Step:**
+
+1. Clone the repository.(https://github.com/Abrash-Official/Speech-Recognition-Analysis)
+2. `pip install -r requirements.txt`
+3. Download [ASR models](https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/deepspeech-0.9.3-models.pbmm) (DeepSpeech/Vosk).
+4. Configure hardware settings in `app.py`.
+
+---
+
+### 4. Key Features Explanation
+
+**Audio Processing Pipeline:**
+
+- Chunked audio handling (e.g., 60s segments)
+- Parallel processing with `ThreadPoolExecutor`
+- Real-time progress tracking
+
+**WER Calculation:**
+
+- Kensho-style normalization
+- Word-level Levenshtein alignment
+- Error classification (Substitutions/Deletions/Insertions)
+- WER is calculated using the formula $$WER = \frac{S + D + I}{N}$$, where $S$ is the number of substitutions, $D$ is the number of deletions, $I$ is the number of insertions, and $N$ is the total number of words in the reference text (Overview: In This Term Project, You Need to Develop Software Which Will Convert Speech into Text Using Python and Whisper, Calculate Word Error Rate (WER), and Understand How Machine Learning, NLP, and Data Visualization Are Connected to These Tasks., n.d.). The *werpy* library can be used to calculate WER (Overview: In This Term Project, You Need to Develop Software Which Will Convert Speech into Text Using Python and Whisper, Calculate Word Error Rate (WER), and Understand How Machine Learning, NLP, and Data Visualization Are Connected to These Tasks., n.d.).
+
+**NLP Pipeline Steps:**
+
+- Tokenization
+- Stemming
+- Lemmatization
+
+---
+
+### 5. API Documentation
+
+**Endpoints:**
+
+- `POST /transcribe` - Audio transcription
+- `POST /calculate_wer` - WER calculation
+- `POST /nlp_analysis` - NLP processing
+- `GET /download_report` - PDF generation
+
+**Example: Transcribing Audio**
+
+To transcribe an audio file, send a `POST` request to the `/transcribe` endpoint with the audio file attached.
+
+```bash
+curl -X POST -F "file=@audio.wav" http://localhost:5000/transcribe
+```
+
+**API Response Format:**
+
+```json
+{
+    "wer": 0.15,
+    "substitutions": ["word1", "word2"],
+    "processing_time": "2.3s",
+    "audio_duration": "30s"
+}
+```
+
+---
+
+### 6. Code Structure
+
+**app.py Highlights:**
+
+- `load_models()`: Initializes ASR engines
+- `transcribe()`: Handles chunked audio processing
+- `kensho_wer()`: Custom WER implementation
+- `generate_analysis()`: Creates visualization assets
+
+---
+
+### 7. Usage Examples
+
+**CLI Transcription:**
+
+```bash
+curl -X POST -F "file=@audio.wav" http://localhost:5000/transcribe
+```
+
+---
+
+### 8. Optimization Guide
+
+**Hardware Configuration:**
+
+For 8GB RAM systems:
+
 ```python
-@app.route('/transcribe', methods=['POST'])
-def transcribe():
-    # Converts uploaded audio to WAV format
-    audio = AudioSegment.from_file(temp_path)
-    wav_path = convert_to_wav(temp_path)
-
-    # Speech-to-text using Google's API
-    hypothesis = recognizer.recognize_google(audio)
-```
-
-### 2. **WER Calculation Logic**
-```python
-def calculate_wer():
-    matcher = SequenceMatcher(None, ref_words, hyp_words)
-    # Identifies error types using sequence matching
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'replace': # Substitutions
-        elif tag == 'delete': # Deletions
-        elif tag == 'insert': # Insertions
-```
-
-### 3. **Visualization Engine**
-```python
-@app.route('/detailed_analysis_images')
-def detailed_analysis_images():
-    # Generates 5 visualizations using Plotly/Matplotlib:
-    # 1. Confusion Matrix
-    # 2. Error Distribution Pie Chart
-    # 3. Word Frequency Comparison
-    # 4. Positional Regression Plot
-    # 5. TP/FP/FN Table
+MAX_CONCURRENT_CHUNKS = 4
+BUFFER_SIZE = 4096  # NVMe optimized
 ```
 
 ---
 
-## **API Endpoints**
+### 9. Troubleshooting
 
-| Endpoint              | Method | Description                        |
-|----------------------|--------|------------------------------------|
-| `/transcribe`        | POST   | Processes audio input to text      |
-| `/calculate_wer`     | POST   | Computes WER and error lists       |
-| `/detailed_analysis` | POST   | Returns JSON with metrics          |
-| `/download_report`   | POST   | Generates PDF report               |
-| `/image_to_text`     | POST   | Extracts text from images          |
+**Common Issues:**
+
+- "Model loading failed": Check model paths in `load_models()`
+- "Memory overflow": Reduce `MAX_CONCURRENT_CHUNKS`
+- "Audio decoding error": Verify FFmpeg installation
 
 ---
 
-## **Usage Guide**
+### 10. User Interface(UI)
 
-### **Step 1: Input Methods**
-- **Record Audio**: Click microphone icon and speak  
-- **Upload File**: Drag-and-drop audio/image files  
-- **Manual Input**: Type directly into text areas  
+Include visual examples of:
 
-### **Step 2: Analysis**
-```js
-// script.js
-analyzeText(hypothesis, reference)
-// Triggers WER calculation and visual updates
-```
+1. Progress bar during upload
+2. Interactive WER visualization
+3. PDF report sample
 
-### **Step 3: Export Results**
-- **Interactive View**: Toggle detailed visualizations  
-- **PDF Export**: One-click report generation  
+This documentation provides a solid foundation. Let me know if you'd like me to elaborate on any specific section or provide additional details.
 
 ---
 
-## **Troubleshooting**
+### 11. References:
 
-| Issue                    | Solution                         |
-|--------------------------|----------------------------------|
-| Microphone not working   | Check browser permissions        |
-| OCR failures             | Install Tesseract v5+            |
-| Audio conversion errors  | Verify FFmpeg installation       |
-| High WER scores          | Reduce background noise          |
+- SpeechRecognition Docs: https://pypi.org/project/SpeechRecognition/
+- WER Calculation: [NIST Standards](https://www.nist.gov/system/files/documents/itl/iad/mig/publications/AM_1.0_Handbook_Final.pdf)
+- SequenceMatcher: [Python difflib Docs](https://docs.python.org/3/library/difflib.html)
 
 ---
 
-## **References**
+<aside>
+    
+☎️ **Contact Info:**
 
-- SpeechRecognition Docs: https://pypi.org/project/SpeechRecognition/  
-- WER Calculation: [NIST Handbook](https://www.nist.gov/system/files/documents/itl/iad/mig/publications/AM_1.0_Handbook_Final.pdf)  
-- SequenceMatcher: [Python difflib Docs](https://docs.python.org/3/library/difflib.html)  
+**Muhammad Abrash**
 
----
+### Email:
+[abrash.official100@gmail.com](mailto:abrash.official100@gmail.com)
 
-## **Contact Information**
+### Linked In:
+[Abrash-Arshad](https://www.linkedin.com/in/abrash-arshad-205b172a7/)
 
-**Muhammad Abrash**  
+### LeetCode:
+[Abrash-Official](https://leetcode.com/u/Nj5BdCiG0r/)
 
-📧 Email: [abrasharshad440@gmail.com](mailto:abrasharshad440@gmail.com)  
-🔗 LinkedIn: [Abrash-Arshad](https://www.linkedin.com/in/abrash-arshad-205b172a7/)  
-💻 GitHub: [Abrash-Official](https://github.com/Abrash-Official/Speech-Recognition-Analysis)  
-🧠 LeetCode: [Nj5BdCiG0r](https://leetcode.com/u/Nj5BdCiG0r/)
+### GitHub:
+[Abrash-Official](https://github.com/Abrash-Official/Speech-Recognition-Analysis)
+
+</aside>
