@@ -10,7 +10,6 @@ plotly-express
 pytesseract
 nltk
 openai-whisper
-unicodedata
 jiwer==3.0.0
 pydub==0.25.1  # Add this for audio conversion
 ffmpeg-python==0.2.0  # Add this for audio processing
