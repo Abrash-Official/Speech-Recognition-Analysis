@@ -1,3 +1,10 @@
+gunicorn
+numpy
+soundfile
+SpeechRecognition
+pydub
+ffmpeg-python
+python-Levenshtein
 matplotlib
 Flask==3.0.0
 SpeechRecognition==3.10.0
