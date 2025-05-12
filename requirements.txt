@@ -1,16 +1,15 @@
-matplotlib
+matplotlib==3.10.1
 Flask==3.0.0
 SpeechRecognition==3.10.0
-pydub
-numpy
-scikit-learn
-PyPDF2
+numpy==1.24.4
+scikit-learn==1.6.1
+PyPDF2==3.0.1
 pypdf
-plotly-express
-pytesseract
-nltk
+plotly-express==0.4.0
+pytesseract==0.3.13
+nltk==3.9.1
 openai-whisper
 jiwer==3.0.0
 pydub==0.25.1  # Add this for audio conversion
 ffmpeg-python==0.2.0  # Add this for audio processing
-fpdf
+fpdf==1.7.2
